@@ -31,17 +31,10 @@ const updateEntities = (entities, speed = 5) => {
   }
 };
 
-const impactSoundUrl = "/sounds/impact.mp3";
-const coinSoundUrl = "/sounds/coin.mp3";
-
 const coinFrequency = 200;
 const enemyFrequency = 300;
-const obstacleFrequency = 125;
+const obstacleFrequency = 100;
 
-/**
- * GameCanvas component.
- * @returns {JSX.Element} The rendered game canvas component.
- */
 const GameCanvas = () => {
   const canvasRef = useRef(null);
   const [isGameOver, setIsGameOver] = useState(false);
@@ -65,8 +58,11 @@ const GameCanvas = () => {
   const keys = useRef({}).current;
   const obstacles = useRef([]).current;
 
-  const [playImpact] = useSound(impactSoundUrl, { interrupt: true });
-  const [playCoin] = useSound(coinSoundUrl, { interrupt: true });
+  const impactSoundUrl = "/sounds/impact.mp3";
+  const coinSoundUrl = "/sounds/coin.mp3";
+
+  const [playImpact] = useSound(impactSoundUrl);
+  const [playCoin] = useSound(coinSoundUrl);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -122,6 +118,8 @@ const GameCanvas = () => {
    * Check for collisions between player and other entities.
    */
   const checkCollisions = () => {
+    if (isGameOver) return;
+
     for (const obstacle of obstacles) {
       if (
         player.x < obstacle.x + obstacle.width &&
@@ -134,6 +132,7 @@ const GameCanvas = () => {
         setIsGameOver(true);
         setCoinsCollected(0);
         setDistance(0);
+        break;
       }
     }
 
@@ -163,6 +162,7 @@ const GameCanvas = () => {
         setIsGameOver(true);
         setCoinsCollected(0);
         setDistance(0);
+        break;
       }
     }
   };
@@ -243,30 +243,30 @@ const GameCanvas = () => {
    * @param {HTMLCanvasElement} canvas - The canvas element.
    */
   const gameLoop = (ctx, canvas) => {
-    if (!isGameOver) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (isGameOver) return;
 
-      updateEntities(coins);
-      updateEntities(enemies, 3);
-      updateEntities(obstacles);
-      updatePlayer(player, keys, canvasRef);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      drawEntities(ctx, coins, "#eab308", 10);
-      drawEntities(ctx, enemies, "#ef4444", 6);
-      drawEntities(ctx, obstacles, "#f97316", 6);
-      drawPlayer(ctx, player);
+    updateEntities(coins);
+    updateEntities(enemies, 3);
+    updateEntities(obstacles);
+    updatePlayer(player, keys, canvasRef);
 
-      checkCollisions();
+    drawEntities(ctx, coins, "#eab308", 10);
+    drawEntities(ctx, enemies, "#ef4444", 6);
+    drawEntities(ctx, obstacles, "#f97316", 6);
+    drawPlayer(ctx, player);
 
-      frameCount++;
-      setDistance((frameCount / 60 / 1000).toFixed(2));
+    checkCollisions();
 
-      if (frameCount % coinFrequency === 0) createCoin();
-      if (frameCount % enemyFrequency === 0) createEnemy();
-      if (frameCount % obstacleFrequency === 0) createObstacle();
+    frameCount++;
+    setDistance((frameCount / 60 / 1000).toFixed(2));
 
-      requestAnimationFrame(() => gameLoop(ctx, canvas));
-    }
+    if (frameCount % coinFrequency === 0) createCoin();
+    if (frameCount % enemyFrequency === 0) createEnemy();
+    if (frameCount % obstacleFrequency === 0) createObstacle();
+
+    requestAnimationFrame(() => gameLoop(ctx, canvas));
   };
 
   /**
