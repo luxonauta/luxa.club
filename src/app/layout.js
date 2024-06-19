@@ -1,5 +1,6 @@
-import "./globals.scss";
+import Script from "next/script";
 import localFont from "next/font/local";
+import "./globals.scss";
 
 const inter = localFont({
   display: "swap",
@@ -21,6 +22,11 @@ const RootLayout = ({ children }) => (
       <div className="container">
         <main>{children}</main>
       </div>
+      <Script
+        defer
+        data-domain="luxa.club"
+        src="https://plausible.io/js/script.js"
+      />
     </body>
   </html>
 );
