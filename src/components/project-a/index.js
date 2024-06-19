@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import "./index.scss";
 import GameCanvas from "./game-canvas";
+import "./index.scss";
 
 const ProjectA = () => {
   const [showGame, setShowGame] = useState(false);
@@ -13,14 +13,17 @@ const ProjectA = () => {
         <h2>Project A</h2>
         <p>Jump, dodge and collect. Survive the challenges.</p>
       </div>
-      <button
-        type="button"
-        onClick={() => setShowGame(true)}
-        className="action primary"
-      >
-        Play
-      </button>
-      {showGame && <GameCanvas />}
+      {showGame ? (
+        <GameCanvas />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowGame(true)}
+          className="action primary"
+        >
+          Play
+        </button>
+      )}
     </div>
   );
 };

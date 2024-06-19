@@ -8,6 +8,7 @@
     position: relative;
     aspect-ratio: 2/1;
     overflow: hidden;
+    border: 0.0625rem solid var(--neutral-03);
     border-radius: var(--rounded-sm);
 
     canvas {
