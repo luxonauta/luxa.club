@@ -2,23 +2,29 @@ import React, { useEffect, useRef, useState } from "react";
 import useSound from "use-sound";
 
 /**
- * Draw entities on the canvas.
- * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+ * Draws entities on the canvas.
+ * @param {CanvasRenderingContext2D} context - The canvas rendering context.
  * @param {Array} entities - Array of entity objects.
  * @param {string} color - Color to fill the entities.
- * @param {number} [radius=0] - Radius for rounded corners.
+ * @param {number} [cornerRadius=0] - Radius for rounded corners.
  */
-const drawEntities = (ctx, entities, color, radius = 0) => {
-  ctx.fillStyle = color;
-  for (const entity of entities) {
-    ctx.beginPath();
-    ctx.roundRect(entity.x, entity.y, entity.width, entity.height, radius);
-    ctx.fill();
-  }
+const drawEntities = (context, entities, color, cornerRadius = 0) => {
+  context.fillStyle = color;
+  entities.forEach((entity) => {
+    context.beginPath();
+    context.roundRect(
+      entity.x,
+      entity.y,
+      entity.width,
+      entity.height,
+      cornerRadius
+    );
+    context.fill();
+  });
 };
 
 /**
- * Update the positions of entities.
+ * Updates the positions of entities.
  * @param {Array} entities - Array of entity objects.
  * @param {number} [speed=5] - Speed at which entities move.
  */
@@ -31,15 +37,22 @@ const updateEntities = (entities, speed = 5) => {
   }
 };
 
-const coinFrequency = 200;
-const enemyFrequency = 300;
-const obstacleFrequency = 100;
+const IMPACT_SOUND_URL = "/sounds/impact.mp3";
+const COIN_SOUND_URL = "/sounds/coin.mp3";
+
+const COIN_SPAWN_RATE = 200;
+const ENEMY_SPAWN_RATE = 300;
+const OBSTACLE_SPAWN_RATE = 100;
 
 const GameCanvas = () => {
   const canvasRef = useRef(null);
+
   const [isGameOver, setIsGameOver] = useState(false);
+  const isGameOverRef = useRef(isGameOver);
+
   const [coinsCollected, setCoinsCollected] = useState(0);
   const [distance, setDistance] = useState(0);
+  const [gameSpeed, setGameSpeed] = useState(5);
 
   const player = useRef({
     x: 100,
@@ -55,18 +68,19 @@ const GameCanvas = () => {
 
   const coins = useRef([]).current;
   const enemies = useRef([]).current;
-  const keys = useRef({}).current;
+  const keysPressed = useRef({}).current;
   const obstacles = useRef([]).current;
 
-  const impactSoundUrl = "/sounds/impact.mp3";
-  const coinSoundUrl = "/sounds/coin.mp3";
+  const [playImpact] = useSound(IMPACT_SOUND_URL, { volume: 1.0 });
+  const [playCoin] = useSound(COIN_SOUND_URL, { volume: 1.0 });
 
-  const [playImpact] = useSound(impactSoundUrl);
-  const [playCoin] = useSound(coinSoundUrl);
+  useEffect(() => {
+    isGameOverRef.current = isGameOver;
+  }, [isGameOver]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const context = canvas.getContext("2d");
 
     const resizeCanvas = () => {
       const scale = window.devicePixelRatio;
@@ -79,22 +93,22 @@ const GameCanvas = () => {
 
     resizeCanvas();
 
-    const handleKeyDown = (e) => {
-      keys[e.code] = true;
+    const handleKeyDown = (event) => {
+      keysPressed[event.code] = true;
     };
 
-    const handleKeyUp = (e) => {
-      keys[e.code] = false;
+    const handleKeyUp = (event) => {
+      keysPressed[event.code] = false;
     };
 
-    const handleTouchStart = (e) => {
-      keys.Space = true;
-      e.preventDefault();
+    const handleTouchStart = (event) => {
+      keysPressed.Space = true;
+      event.preventDefault();
     };
 
-    const handleTouchEnd = (e) => {
-      keys.Space = false;
-      e.preventDefault();
+    const handleTouchEnd = (event) => {
+      keysPressed.Space = false;
+      event.preventDefault();
     };
 
     window.addEventListener("resize", resizeCanvas);
@@ -103,7 +117,7 @@ const GameCanvas = () => {
     canvas.addEventListener("touchstart", handleTouchStart);
     canvas.addEventListener("touchend", handleTouchEnd);
 
-    gameLoop(ctx, canvas);
+    startGameLoop(context, canvas);
 
     return () => {
       window.removeEventListener("resize", resizeCanvas);
@@ -112,14 +126,12 @@ const GameCanvas = () => {
       canvas.removeEventListener("touchstart", handleTouchStart);
       canvas.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [keys, player]);
+  }, [keysPressed, player]);
 
   /**
-   * Check for collisions between player and other entities.
+   * Checks for collisions between player and other entities.
    */
   const checkCollisions = () => {
-    if (isGameOver) return;
-
     for (const obstacle of obstacles) {
       if (
         player.x < obstacle.x + obstacle.width &&
@@ -128,10 +140,7 @@ const GameCanvas = () => {
         player.y + player.height > obstacle.y
       ) {
         playImpact();
-
-        setIsGameOver(true);
-        setCoinsCollected(0);
-        setDistance(0);
+        resetGame();
         break;
       }
     }
@@ -144,9 +153,9 @@ const GameCanvas = () => {
         player.y + player.height > coins[i].y
       ) {
         playCoin();
-
         coins.splice(i, 1);
         setCoinsCollected((prev) => prev + 1);
+        setGameSpeed((prev) => Math.max(prev - 1, 1));
       }
     }
 
@@ -158,19 +167,26 @@ const GameCanvas = () => {
         player.y + player.height > enemy.y
       ) {
         playImpact();
-
-        setIsGameOver(true);
-        setCoinsCollected(0);
-        setDistance(0);
+        resetGame();
         break;
       }
     }
   };
 
   /**
-   * Create a new coin entity.
+   * Resets the game state.
    */
-  const createCoin = () => {
+  const resetGame = () => {
+    setCoinsCollected(0);
+    setDistance(0);
+    setGameSpeed(5);
+    setIsGameOver(true);
+  };
+
+  /**
+   * Creates a new coin entity.
+   */
+  const spawnCoin = () => {
     coins.push({
       x: canvasRef.current.width,
       y: Math.random() * (canvasRef.current.height - 50),
@@ -180,9 +196,9 @@ const GameCanvas = () => {
   };
 
   /**
-   * Create a new enemy entity.
+   * Creates a new enemy entity.
    */
-  const createEnemy = () => {
+  const spawnEnemy = () => {
     enemies.push({
       x: canvasRef.current.width,
       y: Math.random() * canvasRef.current.height,
@@ -193,9 +209,9 @@ const GameCanvas = () => {
   };
 
   /**
-   * Create a new obstacle entity.
+   * Creates a new obstacle entity.
    */
-  const createObstacle = () => {
+  const spawnObstacle = () => {
     const height = Math.random() * (canvasRef.current.height - 200) + 50;
     const isTop = Math.random() < 0.5;
     obstacles.push({
@@ -207,76 +223,77 @@ const GameCanvas = () => {
   };
 
   /**
-   * Update the player's position and state.
+   * Updates the player's position and state.
    */
   const updatePlayer = () => {
-    if (keys.Space) {
+    if (keysPressed.Space) {
       player.dy = player.lift;
     }
 
     player.dy += player.gravity;
     player.y += player.dy;
 
-    if (player.y + player.height > canvasRef.current.height) {
-      player.y = canvasRef.current.height - player.height;
-      player.dy = 0;
-    } else if (player.y < 0) {
-      player.y = 0;
-      player.dy = 0;
+    if (player.y + player.height > canvasRef.current.height || player.y < 0) {
+      playImpact();
+      resetGame();
     }
   };
 
   /**
-   * Draw the player on the canvas.
-   * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+   * Draws the player on the canvas.
+   * @param {CanvasRenderingContext2D} context - The canvas rendering context.
    */
-  const drawPlayer = (ctx) => {
-    ctx.fillStyle = "#334155";
-    ctx.beginPath();
-    ctx.roundRect(player.x, player.y, player.width, player.height, 6);
-    ctx.fill();
+  const drawPlayer = (context) => {
+    context.fillStyle = "#334155";
+    context.beginPath();
+    context.roundRect(player.x, player.y, player.width, player.height, 6);
+    context.fill();
   };
 
   /**
    * Main game loop.
-   * @param {CanvasRenderingContext2D} ctx - The canvas rendering context.
+   * @param {CanvasRenderingContext2D} context - The canvas rendering context.
    * @param {HTMLCanvasElement} canvas - The canvas element.
    */
-  const gameLoop = (ctx, canvas) => {
-    if (isGameOver) return;
+  const startGameLoop = (context, canvas) => {
+    if (isGameOverRef.current) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    context.clearRect(0, 0, canvas.width, canvas.height);
 
-    updateEntities(coins);
-    updateEntities(enemies, 3);
-    updateEntities(obstacles);
-    updatePlayer(player, keys, canvasRef);
+    updateEntities(coins, gameSpeed);
+    updateEntities(enemies, gameSpeed + 2);
+    updateEntities(obstacles, gameSpeed);
+    updatePlayer();
 
-    drawEntities(ctx, coins, "#eab308", 10);
-    drawEntities(ctx, enemies, "#ef4444", 6);
-    drawEntities(ctx, obstacles, "#f97316", 6);
-    drawPlayer(ctx, player);
+    drawEntities(context, coins, "#eab308", 10);
+    drawEntities(context, enemies, "#ef4444", 6);
+    drawEntities(context, obstacles, "#f97316", 6);
+    drawPlayer(context);
 
     checkCollisions();
 
     frameCount++;
     setDistance((frameCount / 60 / 1000).toFixed(2));
 
-    if (frameCount % coinFrequency === 0) createCoin();
-    if (frameCount % enemyFrequency === 0) createEnemy();
-    if (frameCount % obstacleFrequency === 0) createObstacle();
+    if (frameCount % COIN_SPAWN_RATE === 0) spawnCoin();
+    if (frameCount % ENEMY_SPAWN_RATE === 0) spawnEnemy();
+    if (frameCount % OBSTACLE_SPAWN_RATE === 0) spawnObstacle();
 
-    requestAnimationFrame(() => gameLoop(ctx, canvas));
+    setGameSpeed((prev) => prev + 0.001);
+
+    requestAnimationFrame(() => startGameLoop(context, canvas));
   };
 
   /**
-   * Restart the game.
+   * Restarts the game.
    */
   const restartGame = () => {
     setIsGameOver(false);
+    isGameOverRef.current = false;
 
     setCoinsCollected(0);
     setDistance(0);
+    setGameSpeed(5);
 
     coins.length = 0;
     enemies.length = 0;
@@ -286,9 +303,9 @@ const GameCanvas = () => {
     player.y = canvasRef.current.height / 2;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    const context = canvas.getContext("2d");
 
-    gameLoop(ctx, canvas);
+    startGameLoop(context, canvas);
   };
 
   return (
@@ -308,8 +325,10 @@ const GameCanvas = () => {
         )}
       </div>
       <p>
-        Press the spacebar to jump and avoid obstacles. Collect coins to
-        increase your score.
+        Press the spacebar or tap the screen to jump and avoid obstacles.
+        Collect coins to increase your score and slow down the increasing speed.
+        The game will end if you hit an obstacle or enemy or fall off the
+        screen.
       </p>
       <div>
         <p>Distance: {distance} km</p>
