@@ -16,12 +16,17 @@
       height: 100%;
     }
 
+    .countdown,
     .game-over {
       position: absolute;
       inset: 0;
-      gap: var(--space-01);
       backdrop-filter: blur(0.375rem);
-      background-color: hsl(228, 0%, 0%, 0.24);
+    }
+
+    .countdown {
+      gap: var(--space-01);
+      text-transform: uppercase;
+      font-weight: 700;
     }
   }
 }

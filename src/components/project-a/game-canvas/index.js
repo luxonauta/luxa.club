@@ -39,6 +39,7 @@ const updateEntities = (entities, speed = 5) => {
 
 const IMPACT_SOUND_URL = "/sounds/impact.mp3";
 const COIN_SOUND_URL = "/sounds/coin.mp3";
+const BEEP_SOUND_URL = "/sounds/beep.mp3";
 
 const COIN_SPAWN_RATE = 200;
 const ENEMY_SPAWN_RATE = 300;
@@ -54,6 +55,9 @@ const GameCanvas = () => {
   const [distance, setDistance] = useState(0);
   const [gameSpeed, setGameSpeed] = useState(5);
 
+  const [countdown, setCountdown] = useState(3);
+  const [isCountdownActive, setIsCountdownActive] = useState(true);
+
   const player = useRef({
     x: 100,
     y: 0,
@@ -61,7 +65,7 @@ const GameCanvas = () => {
     height: 25.5,
     dy: 0,
     gravity: 0.5,
-    lift: -10
+    lift: -5
   }).current;
 
   let frameCount = useRef(0).current;
@@ -73,14 +77,43 @@ const GameCanvas = () => {
 
   const [playImpact] = useSound(IMPACT_SOUND_URL, { volume: 1.0 });
   const [playCoin] = useSound(COIN_SOUND_URL, { volume: 1.0 });
+  const [playBeep] = useSound(BEEP_SOUND_URL, { volume: 1.0 });
 
   useEffect(() => {
     isGameOverRef.current = isGameOver;
   }, [isGameOver]);
 
   useEffect(() => {
+    if (!isCountdownActive) return;
+
+    const countdownInterval = setInterval(() => {
+      setCountdown((prev) => {
+        if (typeof prev === "number") {
+          if (prev > 1) {
+            playBeep();
+            return prev - 1;
+          }
+
+          if (prev === 1) {
+            playBeep();
+            return "GO!";
+          }
+        } else if (prev === "GO!") {
+          clearInterval(countdownInterval);
+          setTimeout(startGame, 500);
+
+          return prev;
+        }
+
+        return prev;
+      });
+    }, 1000);
+
+    return () => clearInterval(countdownInterval);
+  }, [isCountdownActive, playBeep]);
+
+  useEffect(() => {
     const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
 
     const resizeCanvas = () => {
       const scale = window.devicePixelRatio;
@@ -117,8 +150,6 @@ const GameCanvas = () => {
     canvas.addEventListener("touchstart", handleTouchStart);
     canvas.addEventListener("touchend", handleTouchEnd);
 
-    startGameLoop(context, canvas);
-
     return () => {
       window.removeEventListener("resize", resizeCanvas);
       window.removeEventListener("keydown", handleKeyDown);
@@ -127,6 +158,19 @@ const GameCanvas = () => {
       canvas.removeEventListener("touchend", handleTouchEnd);
     };
   }, [keysPressed, player]);
+
+  const startGame = () => {
+    setCountdown(null);
+    setIsCountdownActive(false);
+
+    const canvas = canvasRef.current;
+    const context = canvas.getContext("2d");
+
+    // Initial boost for the player
+    player.dy = player.lift;
+
+    startGameLoop(context, canvas);
+  };
 
   /**
    * Checks for collisions between player and other entities.
@@ -141,7 +185,7 @@ const GameCanvas = () => {
       ) {
         playImpact();
         resetGame();
-        break;
+        return;
       }
     }
 
@@ -168,7 +212,7 @@ const GameCanvas = () => {
       ) {
         playImpact();
         resetGame();
-        break;
+        return;
       }
     }
   };
@@ -302,10 +346,8 @@ const GameCanvas = () => {
     player.dy = 0;
     player.y = canvasRef.current.height / 2;
 
-    const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
-
-    startGameLoop(context, canvas);
+    setCountdown(3);
+    setIsCountdownActive(true);
   };
 
   return (
@@ -321,6 +363,11 @@ const GameCanvas = () => {
             >
               Restart
             </button>
+          </div>
+        )}
+        {isCountdownActive && (
+          <div className="countdown row flow-column-wrap">
+            <span>{countdown}</span>
           </div>
         )}
       </div>
