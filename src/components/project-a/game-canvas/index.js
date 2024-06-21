@@ -53,7 +53,7 @@ const GameCanvas = () => {
 
   const [coinsCollected, setCoinsCollected] = useState(0);
   const [distance, setDistance] = useState(0);
-  const [gameSpeed, setGameSpeed] = useState(5);
+  const [gameSpeed, setGameSpeed] = useState(3);
 
   const [countdown, setCountdown] = useState(3);
   const [isCountdownActive, setIsCountdownActive] = useState(true);
@@ -323,7 +323,7 @@ const GameCanvas = () => {
     if (frameCount % ENEMY_SPAWN_RATE === 0) spawnEnemy();
     if (frameCount % OBSTACLE_SPAWN_RATE === 0) spawnObstacle();
 
-    setGameSpeed((prev) => prev + 0.001);
+    setGameSpeed((prev) => prev + 0.02);
 
     requestAnimationFrame(() => startGameLoop(context, canvas));
   };
