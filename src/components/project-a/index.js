@@ -8,7 +8,10 @@ const ProjectA = () => {
   const [showGame, setShowGame] = useState(false);
 
   return (
-    <div id="project-a" className="card row flow-column-wrap align-start">
+    <div
+      id="project-a"
+      className="project card row flow-column-wrap align-start"
+    >
       <div>
         <h2>Project A</h2>
         <p>Jump, dodge and collect. Survive the challenges.</p>
