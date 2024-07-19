@@ -1,5 +1,8 @@
 #project-b {
   .game-container {
+    aspect-ratio: unset;
+    height: fit-content;
+    padding: 1em;
     display: flex;
     align-items: center;
     justify-content: center;
