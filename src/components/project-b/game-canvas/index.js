@@ -8,10 +8,10 @@ const initialGameState = [
   { pos: [2, 2], solution: 2 },
   { pos: [3, 3], solution: 3 },
   { pos: [3, 4], type: "double", solution: [4, 9] },
-  { pos: [3, 5], solution: 8 },
   { pos: [4, 4], solution: 5 },
   { pos: [4, 5], type: "double", solution: [6, 10] },
-  { pos: [5, 4], solution: 7 },
+  { pos: [5, 4], type: "portal", solution: 7 },
+  { pos: [3, 5], type: "portal", solution: 8 },
   { pos: [5, 5], solution: 11 },
   { pos: [6, 6], solution: 12 },
   { pos: [7, 7], solution: 13 },
@@ -38,9 +38,9 @@ const GameCanvas = () => {
     const block = newGameState[index];
 
     if (block.type === "double") {
-      handleDoubleClick(block);
+      handleDoubleClick(block, index);
     } else {
-      handleSingleClick(block);
+      handleSingleClick(block, index);
     }
 
     setGameState(newGameState);
@@ -49,30 +49,42 @@ const GameCanvas = () => {
   /**
    * Handle click on a double-click block
    * @param {Object} block - The clicked block
+   * @param {number} index - Index of the clicked block
    */
-  const handleDoubleClick = (block) => {
+  const handleDoubleClick = (block, index) => {
     if (block.solution.includes(currentStep)) {
       block.solution = block.solution.filter((step) => step !== currentStep);
+
       if (block.solution.length === 0) {
         block.activated = true;
       }
+
       setCurrentStep(currentStep + 1);
     } else {
       setGameOver(true);
     }
+
+    setGameState((prevGameState) =>
+      prevGameState.map((b, i) => (i === index ? block : b))
+    );
   };
 
   /**
    * Handle click on a single-click block
    * @param {Object} block - The clicked block
+   * @param {number} index - Index of the clicked block
    */
-  const handleSingleClick = (block) => {
+  const handleSingleClick = (block, index) => {
     if (currentStep === block.solution) {
       block.activated = true;
       setCurrentStep(currentStep + 1);
     } else {
       setGameOver(true);
     }
+
+    setGameState((prevGameState) =>
+      prevGameState.map((b, i) => (i === index ? block : b))
+    );
   };
 
   /**
@@ -108,7 +120,7 @@ const GameCanvas = () => {
       >
         {block.activated && (
           <span>
-            {Array.isArray(block.solution)
+            {Array.isArray(block.solution) && block.solution.length > 0
               ? block.solution.join("/")
               : block.solution}
           </span>
