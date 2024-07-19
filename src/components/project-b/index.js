@@ -13,8 +13,8 @@ const ProjectB = () => {
       className="project card row flow-column-wrap align-start"
     >
       <div>
-        <h2>🏗️ Project B</h2>
-        <p>TBD.</p>
+        <h2>Project B</h2>
+        <p>Activate the blocks in the correct sequence to win.</p>
       </div>
       {showGame ? (
         <GameCanvas />

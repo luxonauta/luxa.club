@@ -143,23 +143,30 @@ const GameCanvas = () => {
   };
 
   return (
-    <div className="game-container">
-      <div className="canvas">
-        {gameState.map((block, index) => renderBlock(block, index))}
-      </div>
-      {gameOver && (
-        <div className="game-over row flow-column-wrap">
-          <button
-            type="button"
-            onClick={restartGame}
-            className="action primary"
-          >
-            Restart
-          </button>
+    <>
+      <div className="game-container">
+        <div className="canvas">
+          {gameState.map((block, index) => renderBlock(block, index))}
         </div>
-      )}
-      <div className="lives">Lives: {lives}</div>
-    </div>
+        {gameOver && (
+          <div className="game-over row flow-column-wrap">
+            <button
+              type="button"
+              onClick={restartGame}
+              className="action primary"
+            >
+              Restart
+            </button>
+          </div>
+        )}
+        <div className="lives">Lives: {lives}</div>
+      </div>
+      <p>
+        Click on blocks in the correct order to progress. 🟣 Activate purple
+        blocks twice. 🔵 Blue blocks are portals; after entering one, click the
+        other portal to continue.
+      </p>
+    </>
   );
 };
 
