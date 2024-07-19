@@ -1,8 +1,7 @@
 import React, { useState } from "react";
+import { toast } from "react-hot-toast";
+import useSound from "use-sound";
 
-/**
- * Initial game state configuration
- */
 const initialGameState = [
   { pos: [1, 1], type: "initial", solution: 1 },
   { pos: [2, 2], solution: 2 },
@@ -18,19 +17,19 @@ const initialGameState = [
   { pos: [8, 8], type: "final", solution: 14 }
 ];
 
-/**
- * GameCanvas component
- * @returns {JSX.Element} The game canvas component
- */
+const TRUE_SOUND_URL = "/sounds/true.mp3";
+const FALSE_SOUND_URL = "/sounds/false.mp3";
+
 const GameCanvas = () => {
   const [gameState, setGameState] = useState(initialGameState);
   const [currentStep, setCurrentStep] = useState(1);
   const [gameOver, setGameOver] = useState(false);
+  const [lives, setLives] = useState(3);
+  const [shakeIndex, setShakeIndex] = useState(null);
 
-  /**
-   * Handle click on a game block
-   * @param {number} index - Index of the clicked block
-   */
+  const [playTrue] = useSound(TRUE_SOUND_URL, { volume: 1.0 });
+  const [playFalse] = useSound(FALSE_SOUND_URL, { volume: 1.0 });
+
   const handleClick = (index) => {
     if (gameOver) return;
 
@@ -46,22 +45,21 @@ const GameCanvas = () => {
     setGameState(newGameState);
   };
 
-  /**
-   * Handle click on a double-click block
-   * @param {Object} block - The clicked block
-   * @param {number} index - Index of the clicked block
-   */
   const handleDoubleClick = (block, index) => {
     if (block.solution.includes(currentStep)) {
       block.solution = block.solution.filter((step) => step !== currentStep);
+      block.partialSolution = block.partialSolution
+        ? [...block.partialSolution, currentStep]
+        : [currentStep];
 
       if (block.solution.length === 0) {
         block.activated = true;
       }
 
+      playTrue();
       setCurrentStep(currentStep + 1);
     } else {
-      setGameOver(true);
+      handleIncorrectStep(index);
     }
 
     setGameState((prevGameState) =>
@@ -69,17 +67,18 @@ const GameCanvas = () => {
     );
   };
 
-  /**
-   * Handle click on a single-click block
-   * @param {Object} block - The clicked block
-   * @param {number} index - Index of the clicked block
-   */
   const handleSingleClick = (block, index) => {
     if (currentStep === block.solution) {
       block.activated = true;
+      playTrue();
       setCurrentStep(currentStep + 1);
+
+      if (block.type === "final") {
+        setGameOver(true);
+        toast("Hey you! You won! 🎉");
+      }
     } else {
-      setGameOver(true);
+      handleIncorrectStep(index);
     }
 
     setGameState((prevGameState) =>
@@ -87,23 +86,36 @@ const GameCanvas = () => {
     );
   };
 
-  /**
-   * Restart the game
-   */
+  const handleIncorrectStep = (index) => {
+    setLives(lives - 1);
+    setShakeIndex(index);
+    playFalse();
+    navigator.vibrate(200);
+
+    setTimeout(() => {
+      setShakeIndex(null);
+    }, 300);
+
+    if (lives <= 1) {
+      setGameOver(true);
+      toast("Game Over! 😓");
+    }
+  };
+
   const restartGame = () => {
     setGameState(
-      initialGameState.map((block) => ({ ...block, activated: false }))
+      initialGameState.map((block) => ({
+        ...block,
+        activated: false,
+        partialSolution: undefined
+      }))
     );
     setCurrentStep(1);
     setGameOver(false);
+    setLives(3);
+    setShakeIndex(null);
   };
 
-  /**
-   * Render a single game block
-   * @param {Object} block - Block data
-   * @param {number} index - Index of the block
-   * @returns {JSX.Element} The rendered block element
-   */
   const renderBlock = (block, index) => {
     const style = {
       gridRowStart: block.pos[0],
@@ -113,18 +125,19 @@ const GameCanvas = () => {
     return (
       <button
         key={index}
-        className="block"
+        className={`block ${shakeIndex === index ? "shake" : ""}`}
         style={style}
         data-type={block.type}
         onClick={() => handleClick(index)}
       >
-        {block.activated && (
+        {block.activated || block.partialSolution ? (
           <span>
-            {Array.isArray(block.solution) && block.solution.length > 0
-              ? block.solution.join("/")
+            {block.partialSolution
+              ? block.partialSolution.join("/") +
+                (block.solution.length > 0 ? "/?" : "")
               : block.solution}
           </span>
-        )}
+        ) : null}
       </button>
     );
   };
@@ -145,6 +158,7 @@ const GameCanvas = () => {
           </button>
         </div>
       )}
+      <div className="lives">Lives: {lives}</div>
     </div>
   );
 };

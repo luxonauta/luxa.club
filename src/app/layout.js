@@ -1,6 +1,7 @@
 import Script from "next/script";
 import localFont from "next/font/local";
 import "./globals.scss";
+import { Toaster } from "react-hot-toast";
 
 const inter = localFont({
   display: "swap",
@@ -20,6 +21,7 @@ const RootLayout = ({ children }) => (
   <html lang="en" className={`${inter.variable}`}>
     <body>
       <div className="container">
+        <Toaster />
         <main>{children}</main>
       </div>
       <Script

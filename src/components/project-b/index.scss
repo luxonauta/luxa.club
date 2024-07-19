@@ -23,6 +23,10 @@
         font-weight: 700;
         background-color: var(--neutral-03);
 
+        &.shake {
+          animation: shake 0.3s;
+        }
+
         &[data-type="initial"],
         &[data-type="final"] {
           background-color: var(--yellow);
@@ -38,5 +42,31 @@
         }
       }
     }
+
+    .lives {
+      padding: 1em 1.5em;
+      position: absolute;
+      inset: 0;
+      text-align: right;
+      pointer-events: none;
+    }
+  }
+}
+
+@keyframes shake {
+  0% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-0.25rem);
+  }
+  50% {
+    transform: translateX(0.25rem);
+  }
+  75% {
+    transform: translateX(-0.25rem);
+  }
+  100% {
+    transform: translateX(0);
   }
 }
