@@ -87,7 +87,15 @@ const GameCanvas = () => {
   };
 
   const handleIncorrectStep = (index) => {
-    setLives(lives - 1);
+    setLives((prevLives) => {
+      const newLives = prevLives - 1;
+      if (newLives <= 0) {
+        setGameOver(true);
+        toast("Game Over! 😓");
+      }
+      return newLives;
+    });
+
     setShakeIndex(index);
     playFalse();
     navigator.vibrate(200);
@@ -95,11 +103,6 @@ const GameCanvas = () => {
     setTimeout(() => {
       setShakeIndex(null);
     }, 300);
-
-    if (lives <= 1) {
-      setGameOver(true);
-      toast("Game Over! 😓");
-    }
   };
 
   const restartGame = () => {
@@ -110,6 +113,7 @@ const GameCanvas = () => {
         partialSolution: undefined
       }))
     );
+
     setCurrentStep(1);
     setGameOver(false);
     setLives(3);
