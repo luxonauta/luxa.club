@@ -2,7 +2,7 @@
   .game-container {
     aspect-ratio: unset;
     height: fit-content;
-    padding: 1em;
+    padding: 2em 1em;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -11,7 +11,7 @@
     .canvas {
       width: fit-content;
       display: grid;
-      grid-template: auto / repeat(10, 2rem);
+      grid-template: auto / repeat(10, 1.875rem);
       gap: 0.125rem;
 
       .block {
@@ -24,6 +24,7 @@
         cursor: pointer;
         font-size: 0.625rem;
         font-weight: 700;
+        color: inherit;
         background-color: var(--neutral-03);
 
         &.shake {
@@ -43,6 +44,10 @@
         &[data-type="portal"] {
           background-color: var(--blue);
         }
+      }
+
+      @media (max-width: 40rem) {
+        grid-template: auto / repeat(10, 1.5rem);
       }
     }
 
