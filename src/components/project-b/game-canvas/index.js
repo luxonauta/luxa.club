@@ -44,8 +44,7 @@ const GameCanvas = () => {
   const handleClick = (index) => {
     if (gameOver) return;
 
-    const newGameState = [...gameState];
-    const block = newGameState[index];
+    const block = gameState[index];
 
     switch (block.type) {
       case "double":
@@ -58,8 +57,6 @@ const GameCanvas = () => {
         handleSingleClick(block, index);
         break;
     }
-
-    setGameState(newGameState);
   };
 
   /**
@@ -84,9 +81,7 @@ const GameCanvas = () => {
       handleIncorrectStep(index);
     }
 
-    setGameState((prevGameState) =>
-      prevGameState.map((b, i) => (i === index ? block : b))
-    );
+    updateGameState(index, block);
   };
 
   /**
@@ -108,9 +103,7 @@ const GameCanvas = () => {
       handleIncorrectStep(index);
     }
 
-    setGameState((prevGameState) =>
-      prevGameState.map((b, i) => (i === index ? block : b))
-    );
+    updateGameState(index, block);
   };
 
   /**
@@ -134,9 +127,7 @@ const GameCanvas = () => {
       handleIncorrectStep(index);
     }
 
-    setGameState((prevGameState) =>
-      prevGameState.map((b, i) => (i === index ? block : b))
-    );
+    updateGameState(index, block);
   };
 
   /**
@@ -163,6 +154,17 @@ const GameCanvas = () => {
   };
 
   /**
+   * Updates the game state with a new block state.
+   * @param {number} index - The index of the block.
+   * @param {Object} block - The block object.
+   */
+  const updateGameState = (index, block) => {
+    setGameState((prevGameState) =>
+      prevGameState.map((b, i) => (i === index ? block : b))
+    );
+  };
+
+  /**
    * Restarts the game by resetting the state.
    */
   const restartGame = () => {
@@ -173,7 +175,6 @@ const GameCanvas = () => {
         partialSolution: undefined
       }))
     );
-
     setCurrentStep(1);
     setGameOver(false);
     setLives(3);
