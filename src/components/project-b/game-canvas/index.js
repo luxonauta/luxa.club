@@ -138,8 +138,10 @@ const GameCanvas = () => {
     setLives((prevLives) => {
       const newLives = prevLives - 1;
       if (newLives <= 0) {
-        setGameOver(true);
-        toast("Game Over! 😓");
+        if (!gameOver) {
+          setGameOver(true);
+          toast("Game Over! 😓");
+        }
       }
       return newLives;
     });
