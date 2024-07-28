@@ -36,10 +36,16 @@ const GameCanvas = () => {
     const newGameState = [...gameState];
     const block = newGameState[index];
 
-    if (block.type === "double") {
-      handleDoubleClick(block, index);
-    } else {
-      handleSingleClick(block, index);
+    switch (block.type) {
+      case "double":
+        handleDoubleClick(block, index);
+        break;
+      case "portal":
+        handlePortalClick(block, index);
+        break;
+      default:
+        handleSingleClick(block, index);
+        break;
     }
 
     setGameState(newGameState);
@@ -76,6 +82,27 @@ const GameCanvas = () => {
       if (block.type === "final") {
         setGameOver(true);
         toast("Hey you! You won! 🎉");
+      }
+    } else {
+      handleIncorrectStep(index);
+    }
+
+    setGameState((prevGameState) =>
+      prevGameState.map((b, i) => (i === index ? block : b))
+    );
+  };
+
+  const handlePortalClick = (block, index) => {
+    if (currentStep === block.solution) {
+      block.activated = true;
+      playTrue();
+      setCurrentStep(currentStep + 1);
+
+      const otherPortalIndex = gameState.findIndex(
+        (b) => b.type === "portal" && b !== block
+      );
+      if (otherPortalIndex !== -1) {
+        handleClick(otherPortalIndex);
       }
     } else {
       handleIncorrectStep(index);
