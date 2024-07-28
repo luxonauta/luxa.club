@@ -118,10 +118,14 @@ const GameCanvas = () => {
       setCurrentStep(currentStep + 1);
 
       const otherPortalIndex = gameState.findIndex(
-        (b) => b.type === "portal" && b !== block
+        (b) => b.type === "portal" && b !== block && !b.activated
       );
       if (otherPortalIndex !== -1) {
-        handleClick(otherPortalIndex);
+        const otherPortalBlock = gameState[otherPortalIndex];
+        otherPortalBlock.activated = true;
+        setCurrentStep(currentStep + 1);
+        playTrue();
+        updateGameState(otherPortalIndex, otherPortalBlock);
       }
     } else {
       handleIncorrectStep(index);
@@ -137,12 +141,14 @@ const GameCanvas = () => {
   const handleIncorrectStep = (index) => {
     setLives((prevLives) => {
       const newLives = prevLives - 1;
+
       if (newLives <= 0) {
         if (!gameOver) {
           setGameOver(true);
           toast("Game Over! 😓");
         }
       }
+
       return newLives;
     });
 
