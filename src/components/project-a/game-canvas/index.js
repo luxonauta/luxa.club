@@ -2,6 +2,34 @@ import React, { useEffect, useRef, useState } from "react";
 import useSound from "use-sound";
 
 /**
+ * Draws a rounded rectangle on the canvas.
+ * @param {CanvasRenderingContext2D} context - The canvas rendering context.
+ * @param {number} x - The x coordinate of the rectangle.
+ * @param {number} y - The y coordinate of the rectangle.
+ * @param {number} width - The width of the rectangle.
+ * @param {number} height - The height of the rectangle.
+ * @param {number} radius - The radius of the corners.
+ */
+const drawRoundedRect = (context, x, y, width, height, radius) => {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.lineTo(x + width - radius, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + radius);
+  context.lineTo(x + width, y + height - radius);
+  context.quadraticCurveTo(
+    x + width,
+    y + height,
+    x + width - radius,
+    y + height
+  );
+  context.lineTo(x + radius, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - radius);
+  context.lineTo(x, y + radius);
+  context.quadraticCurveTo(x, y, x + radius, y);
+  context.closePath();
+};
+
+/**
  * Draws entities on the canvas.
  * @param {CanvasRenderingContext2D} context - The canvas rendering context.
  * @param {Array} entities - Array of entity objects.
@@ -11,8 +39,8 @@ import useSound from "use-sound";
 const drawEntities = (context, entities, color, cornerRadius = 0) => {
   context.fillStyle = color;
   entities.forEach((entity) => {
-    context.beginPath();
-    context.roundRect(
+    drawRoundedRect(
+      context,
       entity.x,
       entity.y,
       entity.width,
@@ -289,8 +317,14 @@ const GameCanvas = () => {
    */
   const drawPlayer = (context) => {
     context.fillStyle = "#334155";
-    context.beginPath();
-    context.roundRect(player.x, player.y, player.width, player.height, 6);
+    drawRoundedRect(
+      context,
+      player.x,
+      player.y,
+      player.width,
+      player.height,
+      6
+    );
     context.fill();
   };
 
