@@ -8,7 +8,7 @@
 
 body {
   min-height: 100dvh;
-  padding: var(--space-04) var(--space-03) var(--space-06) var(--space-03);
+  padding: var(--space-03);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -22,7 +22,6 @@ body {
 main {
   --gap: var(--space-03);
   width: 100%;
-  margin-top: var(--space-06);
 }
 
 b,
@@ -60,7 +59,7 @@ h6,
 .container {
   width: 100%;
   max-width: 42rem;
-  margin-top: var(--space-03);
+  margin-top: var(--space-06);
 
   @media (max-width: 42rem) {
     max-width: 100%;

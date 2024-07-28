@@ -69,9 +69,9 @@ const IMPACT_SOUND_URL = "/sounds/impact.mp3";
 const COIN_SOUND_URL = "/sounds/coin.mp3";
 const BEEP_SOUND_URL = "/sounds/beep.mp3";
 
-const COIN_SPAWN_RATE = 200;
-const ENEMY_SPAWN_RATE = 300;
-const OBSTACLE_SPAWN_RATE = 100;
+const INITIAL_COIN_SPAWN_RATE = 400;
+const INITIAL_ENEMY_SPAWN_RATE = 600;
+const INITIAL_OBSTACLE_SPAWN_RATE = 200;
 
 const GameCanvas = () => {
   const canvasRef = useRef(null);
@@ -82,6 +82,7 @@ const GameCanvas = () => {
   const [coinsCollected, setCoinsCollected] = useState(0);
   const [distance, setDistance] = useState(0);
   const [gameSpeed, setGameSpeed] = useState(3);
+  const [bestScore, setBestScore] = useState(0);
 
   const [countdown, setCountdown] = useState(3);
   const [isCountdownActive, setIsCountdownActive] = useState(true);
@@ -139,6 +140,14 @@ const GameCanvas = () => {
 
     return () => clearInterval(countdownInterval);
   }, [isCountdownActive, playBeep]);
+
+  useEffect(() => {
+    const storedBestScore = localStorage.getItem("bestScore");
+
+    if (storedBestScore) {
+      setBestScore(parseFloat(storedBestScore));
+    }
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -250,8 +259,12 @@ const GameCanvas = () => {
    */
   const resetGame = () => {
     setCoinsCollected(0);
+    if (distance > bestScore) {
+      setBestScore(distance);
+      localStorage.setItem("bestScore", distance);
+    }
     setDistance(0);
-    setGameSpeed(5);
+    setGameSpeed(3);
     setIsGameOver(true);
   };
 
@@ -353,11 +366,11 @@ const GameCanvas = () => {
     frameCount++;
     setDistance((frameCount / 60 / 1000).toFixed(2));
 
-    if (frameCount % COIN_SPAWN_RATE === 0) spawnCoin();
-    if (frameCount % ENEMY_SPAWN_RATE === 0) spawnEnemy();
-    if (frameCount % OBSTACLE_SPAWN_RATE === 0) spawnObstacle();
+    if (frameCount % INITIAL_COIN_SPAWN_RATE === 0) spawnCoin();
+    if (frameCount % INITIAL_ENEMY_SPAWN_RATE === 0) spawnEnemy();
+    if (frameCount % INITIAL_OBSTACLE_SPAWN_RATE === 0) spawnObstacle();
 
-    setGameSpeed((prev) => prev + 0.02);
+    setGameSpeed((prev) => prev + 0.01);
 
     requestAnimationFrame(() => startGameLoop(context, canvas));
   };
@@ -371,7 +384,7 @@ const GameCanvas = () => {
 
     setCoinsCollected(0);
     setDistance(0);
-    setGameSpeed(5);
+    setGameSpeed(3);
 
     coins.length = 0;
     enemies.length = 0;
@@ -414,6 +427,8 @@ const GameCanvas = () => {
       <div>
         <p>Distance: {distance} km</p>
         <p>Coins Collected: {coinsCollected}</p>
+        <br />
+        <p>Best Score: {bestScore} km</p>
       </div>
     </>
   );
