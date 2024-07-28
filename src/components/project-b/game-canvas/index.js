@@ -2,6 +2,9 @@ import React, { useState } from "react";
 import { toast } from "react-hot-toast";
 import useSound from "use-sound";
 
+/**
+ * Initial game state array containing block information.
+ */
 const initialGameState = [
   { pos: [1, 1], type: "initial", solution: 1 },
   { pos: [2, 2], solution: 2 },
@@ -20,6 +23,10 @@ const initialGameState = [
 const TRUE_SOUND_URL = "/sounds/true.mp3";
 const FALSE_SOUND_URL = "/sounds/false.mp3";
 
+/**
+ * The GameCanvas component represents the game interface and logic.
+ * @returns {JSX.Element} The game canvas element.
+ */
 const GameCanvas = () => {
   const [gameState, setGameState] = useState(initialGameState);
   const [currentStep, setCurrentStep] = useState(1);
@@ -30,6 +37,10 @@ const GameCanvas = () => {
   const [playTrue] = useSound(TRUE_SOUND_URL, { volume: 1.0 });
   const [playFalse] = useSound(FALSE_SOUND_URL, { volume: 1.0 });
 
+  /**
+   * Handles the click event for a block.
+   * @param {number} index - The index of the clicked block.
+   */
   const handleClick = (index) => {
     if (gameOver) return;
 
@@ -51,6 +62,11 @@ const GameCanvas = () => {
     setGameState(newGameState);
   };
 
+  /**
+   * Handles a double click event for a block.
+   * @param {Object} block - The block object.
+   * @param {number} index - The index of the block.
+   */
   const handleDoubleClick = (block, index) => {
     if (block.solution.includes(currentStep)) {
       block.solution = block.solution.filter((step) => step !== currentStep);
@@ -73,6 +89,11 @@ const GameCanvas = () => {
     );
   };
 
+  /**
+   * Handles a single click event for a block.
+   * @param {Object} block - The block object.
+   * @param {number} index - The index of the block.
+   */
   const handleSingleClick = (block, index) => {
     if (currentStep === block.solution) {
       block.activated = true;
@@ -92,6 +113,11 @@ const GameCanvas = () => {
     );
   };
 
+  /**
+   * Handles a click event for a portal block.
+   * @param {Object} block - The block object.
+   * @param {number} index - The index of the block.
+   */
   const handlePortalClick = (block, index) => {
     if (currentStep === block.solution) {
       block.activated = true;
@@ -113,6 +139,10 @@ const GameCanvas = () => {
     );
   };
 
+  /**
+   * Handles the event when an incorrect step is made.
+   * @param {number} index - The index of the block.
+   */
   const handleIncorrectStep = (index) => {
     setLives((prevLives) => {
       const newLives = prevLives - 1;
@@ -132,6 +162,9 @@ const GameCanvas = () => {
     }, 300);
   };
 
+  /**
+   * Restarts the game by resetting the state.
+   */
   const restartGame = () => {
     setGameState(
       initialGameState.map((block) => ({
@@ -147,6 +180,12 @@ const GameCanvas = () => {
     setShakeIndex(null);
   };
 
+  /**
+   * Renders a single block element.
+   * @param {Object} block - The block object.
+   * @param {number} index - The index of the block.
+   * @returns {JSX.Element} The rendered block element.
+   */
   const renderBlock = (block, index) => {
     const style = {
       gridRowStart: block.pos[0],
