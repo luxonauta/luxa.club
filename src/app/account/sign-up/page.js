@@ -41,7 +41,12 @@ const SignUp = () => {
 
     const { username, email, password } = formData;
     try {
-      await signUp({ username, email, password });
+      const result = await signUp({ username, email, password });
+      if (result.success) {
+        toast.success(result.success);
+      } else if (result.error) {
+        toast.error(result.error);
+      }
     } catch (error) {
       toast.error("Failed to sign up. Please try again.");
     }

@@ -1,22 +1,9 @@
-import Link from "next/link";
+import dynamic from "next/dynamic";
 
-const Header = () => (
-  <header>
-    <nav>
-      <ul>
-        <li>
-          <Link href="/">
-            <span>Home</span>
-          </Link>
-        </li>
-        <li>
-          <Link href="/account/sign-in">
-            <span>Sign in</span>
-          </Link>
-        </li>
-      </ul>
-    </nav>
-  </header>
-);
+const ServerHeader = dynamic(() => import("./server"), { ssr: false });
+
+const Header = () => {
+  return <ServerHeader />;
+};
 
 export default Header;

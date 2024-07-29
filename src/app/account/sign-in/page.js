@@ -36,7 +36,12 @@ const SignIn = () => {
     const { email, password } = formData;
 
     try {
-      await signIn({ email, password });
+      const result = await signIn({ email, password });
+      if (result.success) {
+        toast.success(result.success);
+      } else if (result.error) {
+        toast.error(result.error);
+      }
     } catch (error) {
       toast.error("Failed to sign in. Please check your credentials.");
     }

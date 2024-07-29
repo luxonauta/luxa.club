@@ -1,9 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
-import { toast } from "react-hot-toast";
 import { z } from "zod";
 
 const signInSchema = z.object({
@@ -11,35 +8,22 @@ const signInSchema = z.object({
   password: z.string().min(6)
 });
 
-/**
- * Sign in a user using the provided email and password.
- *
- * @param {Object} data - The data for signing in.
- * @param {string} data.email - The email of the user.
- * @param {string} data.password - The password of the user.
- * @returns {Promise<void>}
- */
 export const signIn = async (data) => {
   const supabase = createClient();
 
   const result = signInSchema.safeParse(data);
 
   if (!result.success) {
-    result.error.errors.forEach((err) => {
-      toast.error(err.message);
-    });
-    return;
+    return { error: result.error.errors };
   }
 
   const { error } = await supabase.auth.signInWithPassword(data);
 
   if (error) {
-    toast.error("Failed to sign in. Please check your credentials.");
-    return;
+    return { error: "Failed to sign in. Please check your credentials." };
   }
 
-  revalidatePath("/", "layout");
-  redirect("/");
+  return { success: "👋🏻 Hey there! Welcome back." };
 };
 
 const signUpSchema = z.object({
@@ -48,25 +32,13 @@ const signUpSchema = z.object({
   username: z.string().min(3)
 });
 
-/**
- * Sign up a new user with the provided email, password, and username.
- *
- * @param {Object} data - The data for signing up.
- * @param {string} data.email - The email of the new user.
- * @param {string} data.password - The password of the new user.
- * @param {string} data.username - The username of the new user.
- * @returns {Promise<void>}
- */
 export const signUp = async (data) => {
   const supabase = createClient();
 
   const result = signUpSchema.safeParse(data);
 
   if (!result.success) {
-    result.error.errors.forEach((err) => {
-      toast.error(err.message);
-    });
-    return;
+    return { error: result.error.errors };
   }
 
   const { error } = await supabase.auth.signUp({
@@ -80,10 +52,24 @@ export const signUp = async (data) => {
   });
 
   if (error) {
-    toast.error("Failed to sign up. Please try again.");
-    return;
+    return { error: "Failed to sign up. Please try again." };
   }
 
-  revalidatePath("/", "layout");
-  redirect("/");
+  return { success: "Account created successfully!" };
+};
+
+export const signOut = async () => {
+  const supabase = createClient();
+  await supabase.auth.signOut();
+  return { success: "👋🏻 Bye bye! See you soon." };
+};
+
+export const getSession = async () => {
+  const supabase = createClient();
+
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  return user;
 };
