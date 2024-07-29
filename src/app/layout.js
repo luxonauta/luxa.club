@@ -2,6 +2,7 @@ import Script from "next/script";
 import localFont from "next/font/local";
 import "./globals.scss";
 import { Toaster } from "react-hot-toast";
+import Header from "@/components/header";
 
 const inter = localFont({
   display: "swap",
@@ -22,6 +23,7 @@ const RootLayout = ({ children }) => (
     <body>
       <div className="container">
         <Toaster />
+        <Header />
         <main>{children}</main>
       </div>
       <Script
