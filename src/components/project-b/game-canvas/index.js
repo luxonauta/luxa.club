@@ -99,10 +99,9 @@ const GameCanvas = () => {
         try {
           await upsertScore(0, currentStep);
         } catch (error) {
-          console.error("Erro ao atualizar a pontuação:", error);
+          console.error("Error updating score:", error.message);
           toast("💁🏻 Hey, sign in to be on the Leaderboard!");
         }
-
         setGameOver(true);
         toast("Hey you! You won! 🎉");
       }
