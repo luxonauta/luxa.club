@@ -263,10 +263,9 @@ const GameCanvas = () => {
     try {
       await upsertScore(distance, 0);
     } catch (error) {
-      console.error("Erro ao atualizar a pontuação:", error);
+      console.error("Error updating score:", error.message);
       toast("💁🏻 Hey, sign in to be on the Leaderboard!");
     }
-
     setCoinsCollected(0);
 
     if (distance > bestScore) {
