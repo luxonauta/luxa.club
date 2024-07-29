@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import useSound from "use-sound";
+import { upsertScore } from "@/utils/supabase/actions";
 
 /**
  * Draws a rounded rectangle on the canvas.
@@ -257,12 +259,21 @@ const GameCanvas = () => {
   /**
    * Resets the game state.
    */
-  const resetGame = () => {
+  const resetGame = async () => {
+    try {
+      await upsertScore(distance, 0);
+    } catch (error) {
+      console.error("Erro ao atualizar a pontuação:", error);
+      toast("💁🏻 Hey, sign in to be on the Leaderboard!");
+    }
+
     setCoinsCollected(0);
+
     if (distance > bestScore) {
       setBestScore(distance);
       localStorage.setItem("bestScore", distance);
     }
+
     setDistance(0);
     setGameSpeed(3);
     setIsGameOver(true);

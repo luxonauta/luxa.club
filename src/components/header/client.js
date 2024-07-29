@@ -28,6 +28,11 @@ const ClientHeader = ({ session }) => {
               <span>Home</span>
             </Link>
           </li>
+          <li>
+            <Link href="/leaderboard">
+              <span>Leaderboard</span>
+            </Link>
+          </li>
           {session ? (
             <li>
               <button
