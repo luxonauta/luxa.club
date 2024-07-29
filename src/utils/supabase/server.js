@@ -12,9 +12,6 @@ import { cookies } from "next/headers";
  * @returns {SupabaseClient} A Supabase client instance configured for the server.
  */
 export const createClient = () => {
-  const cookieStore = cookies();
-
-export const createClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -35,7 +32,7 @@ export const createClient = () => {
             cookieStore.set(name, value, options)
           );
         } catch (error) {
-          console.error("Failed to set cookies:", error);
+          console.error("Failed to set cookies:", error.message);
         }
       }
     }
