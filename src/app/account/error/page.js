@@ -1,5 +1,5 @@
-const Error = () => {
+const AccountError = () => {
   return <p>😓 Sorry, something went wrong...</p>;
 };
 
-export default Error;
+export default AccountError;
