@@ -1,6 +1,17 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse } from "next/server";
 
+/**
+ * Update the Supabase session based on the incoming request.
+ *
+ * This function creates a Supabase server client with cookie management
+ * for handling authentication and session management. If the user is not
+ * authenticated and is not on the sign-in page, they will be redirected
+ * to the sign-in page.
+ *
+ * @param {Request} request - The incoming request object.
+ * @returns {Promise<NextResponse>} A promise that resolves to a NextResponse object.
+ */
 export const updateSession = async (request) => {
   let supabaseResponse = NextResponse.next({
     request

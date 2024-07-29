@@ -1,6 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
+/**
+ * Create a Supabase client for the server with cookie management.
+ *
+ * This function reads the Supabase URL and ANON KEY from environment variables
+ * and uses them to create a server client instance. It also handles the management
+ * of cookies for authentication and session purposes.
+ *
+ * @throws {Error} Throws an error if the Supabase URL or ANON KEY is missing.
+ * @returns {SupabaseClient} A Supabase client instance configured for the server.
+ */
 export const createClient = () => {
   const cookieStore = cookies();
 
@@ -21,11 +31,7 @@ export const createClient = () => {
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options)
           );
-        } catch {
-          // The `setAll` method was called from a Server Component.
-          // This can be ignored if you have middleware refreshing
-          // user sessions.
-        }
+        } catch {}
       }
     }
   });
