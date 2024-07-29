@@ -9,13 +9,16 @@ const ClientHeader = ({ session }) => {
   const router = useRouter();
 
   const handleSignOut = async () => {
-    const result = await signOut();
-
-    if (result?.success) {
-      toast(result.success);
-      router.push("/account/sign-in");
-    } else {
-      toast("😦 Failed to sign out...");
+    try {
+      const result = await signOut();
+      if (result?.success) {
+        toast(result.success);
+        router.push("/account/sign-in");
+      } else {
+        toast("😦 Failed to sign out...");
+      }
+    } catch (error) {
+      toast("An error occurred during sign out.");
     }
   };
 
