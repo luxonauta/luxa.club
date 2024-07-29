@@ -1,4 +1,4 @@
-const { default: Link } = require("next/link");
+import Link from "next/link";
 
 const Header = () => (
   <header>
@@ -10,8 +10,8 @@ const Header = () => (
           </Link>
         </li>
         <li>
-          <Link href="/login">
-            <span>Login</span>
+          <Link href="/account/sign-in">
+            <span>Sign in</span>
           </Link>
         </li>
       </ul>
