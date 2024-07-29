@@ -10,7 +10,7 @@ import { updateSession } from "@/utils/supabase/middleware";
  * @returns {Promise<NextResponse>} A promise that resolves to a NextResponse object.
  */
 export const middleware = async (request) => {
-  return await updateSession(request);
+  return updateSession(request);
 };
 
 /**
