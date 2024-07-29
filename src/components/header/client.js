@@ -30,7 +30,10 @@ const ClientHeader = ({ session }) => {
           </li>
           {session ? (
             <li>
-              <button onClick={handleSignOut}>
+              <button
+                onClick={handleSignOut}
+                className="link without-underline"
+              >
                 <span>Sign out</span>
               </button>
             </li>

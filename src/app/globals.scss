@@ -148,16 +148,28 @@ input {
 }
 
 .link {
+  appearance: none;
+  width: fit-content;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+  border: none;
   line-height: inherit;
   text-decoration: underline;
   text-underline-offset: 0.125rem;
   font-family: inherit;
   font-size: inherit;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--neutral-08);
+  background-color: transparent;
+  transition: color 240ms var(--fluid);
 
   &:hover {
     color: var(--neutral-09);
+  }
+
+  &.without-underline {
+    text-decoration: none;
   }
 }
 

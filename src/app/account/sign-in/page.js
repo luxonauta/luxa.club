@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 import { z } from "zod";
+import { useRouter } from "next/navigation";
 
 const SignIn = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
+  const router = useRouter();
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -27,7 +29,7 @@ const SignIn = () => {
 
     if (!result.success) {
       result.error.errors.forEach((err) => {
-        toast.error(err.message);
+        toast(err.message);
       });
 
       return;
@@ -38,12 +40,13 @@ const SignIn = () => {
     try {
       const result = await signIn({ email, password });
       if (result.success) {
-        toast.success(result.success);
+        toast(result.success);
+        router.push("/");
       } else if (result.error) {
-        toast.error(result.error);
+        toast(result.error);
       }
     } catch (error) {
-      toast.error("Failed to sign in. Please check your credentials.");
+      toast("Failed to sign in. Please check your credentials.");
     }
   };
 

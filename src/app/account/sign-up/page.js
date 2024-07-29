@@ -34,7 +34,7 @@ const SignUp = () => {
 
     if (!result.success) {
       result.error.errors.forEach((err) => {
-        toast.error(err.message);
+        toast(err.message);
       });
       return;
     }
@@ -43,12 +43,12 @@ const SignUp = () => {
     try {
       const result = await signUp({ username, email, password });
       if (result.success) {
-        toast.success(result.success);
+        toast(result.success);
       } else if (result.error) {
-        toast.error(result.error);
+        toast(result.error);
       }
     } catch (error) {
-      toast.error("Failed to sign up. Please try again.");
+      toast("Failed to sign up. Please try again.");
     }
   };
 
@@ -59,7 +59,7 @@ const SignUp = () => {
     >
       <h1>Sign Up to Luxa Club!</h1>
       <fieldset>
-        <label htmlFor="username">Username:</label>
+        <label htmlFor="username">Username</label>
         <input
           id="username"
           name="username"
@@ -70,7 +70,7 @@ const SignUp = () => {
         />
       </fieldset>
       <fieldset>
-        <label htmlFor="email">Email:</label>
+        <label htmlFor="email">Email address</label>
         <input
           id="email"
           name="email"
@@ -81,7 +81,7 @@ const SignUp = () => {
         />
       </fieldset>
       <fieldset>
-        <label htmlFor="password">Password:</label>
+        <label htmlFor="password">Password</label>
         <input
           id="password"
           name="password"
