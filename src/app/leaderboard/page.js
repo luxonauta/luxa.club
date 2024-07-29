@@ -9,8 +9,12 @@ const Leaderboard = () => {
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      const data = await getLeaderboard();
-      setLeaderboard(data);
+      try {
+        const data = await getLeaderboard();
+        setLeaderboard(data);
+      } catch (error) {
+        console.error("Failed to fetch leaderboard:", error);
+      }
     };
 
     fetchLeaderboard();
