@@ -261,7 +261,7 @@ const GameCanvas = () => {
    */
   const resetGame = async () => {
     const projectAScore =
-      Math.floor(distance * 1000) * 10 + coinsCollected * 20;
+      Math.floor(distance * 100) * 100 + coinsCollected * 100;
 
     try {
       await upsertScore(projectAScore, 0);

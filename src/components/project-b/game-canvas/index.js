@@ -96,7 +96,7 @@ const GameCanvas = () => {
       setCurrentStep(currentStep + 1);
 
       if (block.type === "final") {
-        const projectBScore = (14 - currentStep + 1) * 300;
+        const projectBScore = 300 - (3 - lives) * 100;
 
         try {
           await upsertScore(0, projectBScore);
