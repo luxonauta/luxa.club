@@ -36,7 +36,7 @@ const Leaderboard = () => {
           <tbody>
             {leaderboard.map((entry) => (
               <tr key={entry.id}>
-                <td>{entry.username}</td>
+                <td>@{entry.username}</td>
                 <td>{entry.project_a_score}</td>
                 <td>{entry.project_b_score}</td>
                 <td>{entry.total_score}</td>

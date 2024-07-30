@@ -260,12 +260,16 @@ const GameCanvas = () => {
    * Resets the game state.
    */
   const resetGame = async () => {
+    const projectAScore =
+      Math.floor(distance * 1000) * 10 + coinsCollected * 20;
+
     try {
-      await upsertScore(distance, 0);
+      await upsertScore(projectAScore, 0);
     } catch (error) {
       console.error("Error updating score:", error.message);
       toast("💁🏻 Hey, sign in to be on the Leaderboard!");
     }
+
     setCoinsCollected(0);
 
     if (distance > bestScore) {

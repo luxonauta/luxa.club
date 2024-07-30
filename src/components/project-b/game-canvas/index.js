@@ -96,12 +96,15 @@ const GameCanvas = () => {
       setCurrentStep(currentStep + 1);
 
       if (block.type === "final") {
+        const projectBScore = (14 - currentStep + 1) * 300;
+
         try {
-          await upsertScore(0, currentStep);
+          await upsertScore(0, projectBScore);
         } catch (error) {
           console.error("Error updating score:", error.message);
           toast("💁🏻 Hey, sign in to be on the Leaderboard!");
         }
+
         setGameOver(true);
         toast("Hey you! You won! 🎉");
       }
