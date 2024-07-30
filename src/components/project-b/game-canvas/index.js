@@ -89,13 +89,19 @@ const GameCanvas = () => {
    * @param {Object} block - The block object.
    * @param {number} index - The index of the block.
    */
-  const handleSingleClick = (block, index) => {
+  const handleSingleClick = async (block, index) => {
     if (currentStep === block.solution) {
       block.activated = true;
       playTrue();
       setCurrentStep(currentStep + 1);
 
       if (block.type === "final") {
+        try {
+          await upsertScore(0, currentStep);
+        } catch (error) {
+          console.error("Error updating score:", error.message);
+          toast("💁🏻 Hey, sign in to be on the Leaderboard!");
+        }
         setGameOver(true);
         toast("Hey you! You won! 🎉");
       }

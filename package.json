@@ -17,7 +17,10 @@
     "use-sound": "^4.0.1"
   },
   "devDependencies": {
+    "@supabase/ssr": "^0.4.0",
+    "@supabase/supabase-js": "^2.44.4",
     "luxacss": "^1.0.8",
-    "sass": "^1.77.6"
+    "sass": "^1.77.6",
+    "zod": "^3.23.8"
   }
 }
