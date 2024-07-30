@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-const getLeaderboard = React.lazy(() => import("@/utils/supabase/actions").then(module => ({ default: module.getLeaderboard })));
+import { getLeaderboard } from "@/utils/supabase/actions";
 import "./index.scss";
 
 const Leaderboard = () => {

@@ -104,11 +104,11 @@ input {
 
 .table {
   width: 100%;
-  margin: 0.5em 0;
+  margin: 0;
   position: relative;
   overflow: auto hidden;
   border: 0.0625rem solid var(--neutral-04);
-  border-radius: var(--rounded-sm);
+  border-radius: 0.25rem;
 
   table {
     width: max-content;
