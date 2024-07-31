@@ -1,10 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import useSound from "use-sound";
+import { upsertScore } from "@/utils/supabase/actions";
 
-/**
- * Initial game state array containing block information.
- */
 const initialGameState = [
   { pos: [1, 1], type: "initial", solution: 1 },
   { pos: [2, 2], solution: 2 },
@@ -20,12 +18,13 @@ const initialGameState = [
   { pos: [8, 8], type: "final", solution: 14 }
 ];
 
-const TRUE_SOUND_URL = "/sounds/true.mp3";
-const FALSE_SOUND_URL = "/sounds/false.mp3";
+const TRUE_SOUND_URL = "/sounds/TRUE.MP3";
+const FALSE_SOUND_URL = "/sounds/FALSE.MP3";
 
 /**
- * The GameCanvas component represents the game interface and logic.
- * @returns {JSX.Element} The game canvas element.
+ * GameCanvas component
+ * @component
+ * @returns {JSX.Element}
  */
 const GameCanvas = () => {
   const [gameState, setGameState] = useState(initialGameState);
@@ -33,18 +32,24 @@ const GameCanvas = () => {
   const [gameOver, setGameOver] = useState(false);
   const [lives, setLives] = useState(3);
   const [shakeIndex, setShakeIndex] = useState(null);
+  const [awaitingPortal, setAwaitingPortal] = useState(false);
 
   const [playTrue] = useSound(TRUE_SOUND_URL, { volume: 1.0 });
   const [playFalse] = useSound(FALSE_SOUND_URL, { volume: 1.0 });
 
   /**
-   * Handles the click event for a block.
-   * @param {number} index - The index of the clicked block.
+   * Handles the click event on a block
+   * @param {number} index - The index of the clicked block
    */
   const handleClick = (index) => {
     if (gameOver) return;
 
     const block = gameState[index];
+
+    if (awaitingPortal && block.type !== "portal") {
+      handleIncorrectStep(index);
+      return;
+    }
 
     switch (block.type) {
       case "double":
@@ -60,9 +65,9 @@ const GameCanvas = () => {
   };
 
   /**
-   * Handles a double click event for a block.
-   * @param {Object} block - The block object.
-   * @param {number} index - The index of the block.
+   * Handles the double click event on a block
+   * @param {Object} block - The block object
+   * @param {number} index - The index of the clicked block
    */
   const handleDoubleClick = (block, index) => {
     if (block.solution.includes(currentStep)) {
@@ -71,9 +76,7 @@ const GameCanvas = () => {
         ? [...block.partialSolution, currentStep]
         : [currentStep];
 
-      if (block.solution.length === 0) {
-        block.activated = true;
-      }
+      if (block.solution.length === 0) block.activated = true;
 
       playTrue();
       setCurrentStep(currentStep + 1);
@@ -85,9 +88,9 @@ const GameCanvas = () => {
   };
 
   /**
-   * Handles a single click event for a block.
-   * @param {Object} block - The block object.
-   * @param {number} index - The index of the block.
+   * Handles the single click event on a block
+   * @param {Object} block - The block object
+   * @param {number} index - The index of the clicked block
    */
   const handleSingleClick = async (block, index) => {
     if (currentStep === block.solution) {
@@ -96,12 +99,11 @@ const GameCanvas = () => {
       setCurrentStep(currentStep + 1);
 
       if (block.type === "final") {
-        const projectBScore = 300 - (3 - lives) * 100;
+        const score = 300 - (3 - lives) * 100;
 
         try {
-          await upsertScore(0, projectBScore);
+          upsertScore(score);
         } catch (error) {
-          console.error("Error updating score:", error.message);
           toast("💁🏻 Hey, sign in to be on the Leaderboard!");
         }
 
@@ -116,36 +118,37 @@ const GameCanvas = () => {
   };
 
   /**
-   * Handles a click event for a portal block.
-   * @param {Object} block - The block object.
-   * @param {number} index - The index of the block.
+   * Handles the portal click event on a block
+   * @param {Object} block - The block object
+   * @param {number} index - The index of the clicked block
    */
   const handlePortalClick = (block, index) => {
-    if (currentStep === block.solution) {
-      block.activated = true;
-      playTrue();
-      setCurrentStep(currentStep + 1);
-
-      const otherPortalIndex = gameState.findIndex(
-        (b) => b.type === "portal" && b !== block && !b.activated
-      );
-      if (otherPortalIndex !== -1) {
-        const otherPortalBlock = gameState[otherPortalIndex];
-        otherPortalBlock.activated = true;
-        setCurrentStep(currentStep + 1);
+    if (awaitingPortal) {
+      if (currentStep === block.solution) {
+        block.activated = true;
         playTrue();
-        updateGameState(otherPortalIndex, otherPortalBlock);
+        setCurrentStep(currentStep + 1);
+        setAwaitingPortal(false);
+      } else {
+        handleIncorrectStep(index);
       }
     } else {
-      handleIncorrectStep(index);
+      if (currentStep === block.solution) {
+        block.activated = true;
+        playTrue();
+        setCurrentStep(currentStep + 1);
+        setAwaitingPortal(true);
+      } else {
+        handleIncorrectStep(index);
+      }
     }
 
     updateGameState(index, block);
   };
 
   /**
-   * Handles the event when an incorrect step is made.
-   * @param {number} index - The index of the block.
+   * Handles incorrect step
+   * @param {number} index - The index of the clicked block
    */
   const handleIncorrectStep = (index) => {
     setLives((prevLives) => {
@@ -171,9 +174,9 @@ const GameCanvas = () => {
   };
 
   /**
-   * Updates the game state with a new block state.
-   * @param {number} index - The index of the block.
-   * @param {Object} block - The block object.
+   * Updates the game state for a block
+   * @param {number} index - The index of the block
+   * @param {Object} block - The block object
    */
   const updateGameState = (index, block) => {
     setGameState((prevGameState) =>
@@ -181,8 +184,17 @@ const GameCanvas = () => {
     );
   };
 
+  useEffect(() => {
+    if (shakeIndex !== null) {
+      const timer = setTimeout(() => {
+        setShakeIndex(null);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [shakeIndex]);
+
   /**
-   * Restarts the game by resetting the state.
+   * Restarts the game
    */
   const restartGame = () => {
     setGameState(
@@ -196,13 +208,14 @@ const GameCanvas = () => {
     setGameOver(false);
     setLives(3);
     setShakeIndex(null);
+    setAwaitingPortal(false);
   };
 
   /**
-   * Renders a single block element.
-   * @param {Object} block - The block object.
-   * @param {number} index - The index of the block.
-   * @returns {JSX.Element} The rendered block element.
+   * Renders a block
+   * @param {Object} block - The block object
+   * @param {number} index - The index of the block
+   * @returns {JSX.Element} The block element
    */
   const renderBlock = (block, index) => {
     const style = {
