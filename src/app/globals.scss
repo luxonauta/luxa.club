@@ -7,16 +7,13 @@
 }
 
 body {
-  min-height: 100dvh;
   padding: var(--space-03);
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   font-family: var(--font-inter);
   font-size: 0.75rem;
   color: var(--neutral-08);
-  background-color: var(--background-color);
 }
 
 header {
@@ -105,7 +102,6 @@ input {
 .table {
   width: 100%;
   margin: 0;
-  position: relative;
   overflow: auto hidden;
   border: 0.0625rem solid var(--neutral-04);
   border-radius: 0.25rem;
@@ -162,7 +158,6 @@ input {
   width: fit-content;
   margin: 0;
   padding: 0.75em 1em;
-  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -254,7 +249,6 @@ input {
 
 .project {
   width: 100%;
-  position: relative;
   gap: var(--space-01);
 
   .game-container {

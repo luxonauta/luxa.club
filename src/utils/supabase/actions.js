@@ -105,7 +105,7 @@ export const getSession = async () => {
  * @param {number} projectBScore - Score for Project B.
  * @returns {Object} Result of the upsert operation.
  */
-export const upsertScore = async (projectAScore, projectBScore) => {
+export const upsertScore = async (score) => {
   const supabase = createClient();
   const { data: userData, error: userError } = await supabase.auth.getUser();
 
@@ -124,8 +124,7 @@ export const upsertScore = async (projectAScore, projectBScore) => {
     {
       user_id: userId,
       username: username,
-      project_a_score: projectAScore,
-      project_b_score: projectBScore
+      total_score: score
     },
     { onConflict: ["user_id"] }
   );
@@ -146,7 +145,7 @@ export const getLeaderboard = async () => {
 
   const { data, error } = await supabase
     .from("leaderboard")
-    .select("*")
+    .select("username, total_score")
     .order("total_score", { ascending: false });
 
   if (error) {

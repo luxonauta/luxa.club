@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import useSound from "use-sound";
+import Cookies from "js-cookie";
 import { upsertScore } from "@/utils/supabase/actions";
 
 /**
@@ -40,6 +41,7 @@ const drawRoundedRect = (context, x, y, width, height, radius) => {
  */
 const drawEntities = (context, entities, color, cornerRadius = 0) => {
   context.fillStyle = color;
+
   entities.forEach((entity) => {
     drawRoundedRect(
       context,
@@ -49,6 +51,7 @@ const drawEntities = (context, entities, color, cornerRadius = 0) => {
       entity.height,
       cornerRadius
     );
+
     context.fill();
   });
 };
@@ -61,9 +64,8 @@ const drawEntities = (context, entities, color, cornerRadius = 0) => {
 const updateEntities = (entities, speed = 5) => {
   for (let i = entities.length - 1; i >= 0; i--) {
     entities[i].x -= speed;
-    if (entities[i].x + entities[i].width < 0) {
-      entities.splice(i, 1);
-    }
+
+    if (entities[i].x + entities[i].width < 0) entities.splice(i, 1);
   }
 };
 
@@ -77,15 +79,15 @@ const INITIAL_OBSTACLE_SPAWN_RATE = 200;
 
 const GameCanvas = () => {
   const canvasRef = useRef(null);
-
   const [isGameOver, setIsGameOver] = useState(false);
   const isGameOverRef = useRef(isGameOver);
-
+  const [isGameResetting, setIsGameResetting] = useState(false);
   const [coinsCollected, setCoinsCollected] = useState(0);
+  const coinsCollectedRef = useRef(coinsCollected);
   const [distance, setDistance] = useState(0);
+  const distanceRef = useRef(distance);
   const [gameSpeed, setGameSpeed] = useState(3);
   const [bestScore, setBestScore] = useState(0);
-
   const [countdown, setCountdown] = useState(3);
   const [isCountdownActive, setIsCountdownActive] = useState(true);
 
@@ -100,7 +102,6 @@ const GameCanvas = () => {
   }).current;
 
   let frameCount = useRef(0).current;
-
   const coins = useRef([]).current;
   const enemies = useRef([]).current;
   const keysPressed = useRef({}).current;
@@ -111,8 +112,8 @@ const GameCanvas = () => {
   const [playBeep] = useSound(BEEP_SOUND_URL, { volume: 1.0 });
 
   useEffect(() => {
-    isGameOverRef.current = isGameOver;
-  }, [isGameOver]);
+    if (!isGameResetting) isGameOverRef.current = isGameOver;
+  }, [isGameOver, isGameResetting]);
 
   useEffect(() => {
     if (!isCountdownActive) return;
@@ -124,7 +125,6 @@ const GameCanvas = () => {
             playBeep();
             return prev - 1;
           }
-
           if (prev === 1) {
             playBeep();
             return "GO!";
@@ -132,7 +132,6 @@ const GameCanvas = () => {
         } else if (prev === "GO!") {
           clearInterval(countdownInterval);
           setTimeout(startGame, 500);
-
           return prev;
         }
 
@@ -144,10 +143,12 @@ const GameCanvas = () => {
   }, [isCountdownActive, playBeep]);
 
   useEffect(() => {
-    const storedBestScore = localStorage.getItem("bestScore");
+    const storedBestScore = Cookies.get("bestScore");
 
     if (storedBestScore) {
       setBestScore(parseFloat(storedBestScore));
+    } else {
+      Cookies.set("bestScore", "0", { expires: 365 });
     }
   }, []);
 
@@ -222,8 +223,7 @@ const GameCanvas = () => {
         player.y < obstacle.y + obstacle.height &&
         player.y + player.height > obstacle.y
       ) {
-        playImpact();
-        resetGame();
+        if (!isGameResetting) resetGame();
         return;
       }
     }
@@ -237,11 +237,14 @@ const GameCanvas = () => {
       ) {
         playCoin();
         coins.splice(i, 1);
-        setCoinsCollected((prev) => prev + 1);
+        setCoinsCollected((prev) => {
+          const newCoinsCollected = prev + 1;
+          coinsCollectedRef.current = newCoinsCollected;
+          return newCoinsCollected;
+        });
         setGameSpeed((prev) => Math.max(prev - 1, 1));
       }
     }
-
     for (const enemy of enemies) {
       if (
         player.x < enemy.x + enemy.width &&
@@ -249,8 +252,7 @@ const GameCanvas = () => {
         player.y < enemy.y + enemy.height &&
         player.y + player.height > enemy.y
       ) {
-        playImpact();
-        resetGame();
+        if (!isGameResetting) resetGame();
         return;
       }
     }
@@ -259,27 +261,35 @@ const GameCanvas = () => {
   /**
    * Resets the game state.
    */
-  const resetGame = async () => {
-    const projectAScore =
-      Math.floor(distance * 100) * 100 + coinsCollected * 100;
+  const resetGame = () => {
+    playImpact();
+    setIsGameResetting(true);
+
+    const finalDistance = distanceRef.current;
+    const finalCoinsCollected = coinsCollectedRef.current;
+
+    const score = Math.floor(
+      finalDistance * 1000 * 10 + finalCoinsCollected * 20
+    );
 
     try {
-      await upsertScore(projectAScore, 0);
+      upsertScore(score);
     } catch (error) {
-      console.error("Error updating score:", error.message);
       toast("💁🏻 Hey, sign in to be on the Leaderboard!");
     }
 
-    setCoinsCollected(0);
-
-    if (distance > bestScore) {
-      setBestScore(distance);
-      localStorage.setItem("bestScore", distance);
+    if (score > bestScore) {
+      setBestScore(score);
+      Cookies.set("bestScore", score.toFixed(2), { expires: 365 });
     }
 
+    setCoinsCollected(0);
+    coinsCollectedRef.current = 0;
     setDistance(0);
+    distanceRef.current = 0;
     setGameSpeed(3);
     setIsGameOver(true);
+    setIsGameResetting(false);
   };
 
   /**
@@ -325,16 +335,12 @@ const GameCanvas = () => {
    * Updates the player's position and state.
    */
   const updatePlayer = () => {
-    if (keysPressed.Space) {
-      player.dy = player.lift;
-    }
-
+    if (keysPressed.Space) player.dy = player.lift;
     player.dy += player.gravity;
     player.y += player.dy;
 
     if (player.y + player.height > canvasRef.current.height || player.y < 0) {
-      playImpact();
-      resetGame();
+      if (!isGameResetting) resetGame();
     }
   };
 
@@ -370,15 +376,19 @@ const GameCanvas = () => {
     updateEntities(obstacles, gameSpeed);
     updatePlayer();
 
-    drawEntities(context, coins, "#eab308", 10);
-    drawEntities(context, enemies, "#ef4444", 6);
-    drawEntities(context, obstacles, "#f97316", 6);
+    drawEntities(context, coins, "#EAB308", 10);
+    drawEntities(context, enemies, "#EF4444", 6);
+    drawEntities(context, obstacles, "#F97316", 6);
     drawPlayer(context);
 
     checkCollisions();
 
     frameCount++;
-    setDistance((frameCount / 60 / 1000).toFixed(2));
+    setDistance((prev) => {
+      const newDistance = prev + gameSpeed / 60 / 1000;
+      distanceRef.current = newDistance;
+      return newDistance;
+    });
 
     if (frameCount % INITIAL_COIN_SPAWN_RATE === 0) spawnCoin();
     if (frameCount % INITIAL_ENEMY_SPAWN_RATE === 0) spawnEnemy();
@@ -397,7 +407,9 @@ const GameCanvas = () => {
     isGameOverRef.current = false;
 
     setCoinsCollected(0);
+    coinsCollectedRef.current = 0;
     setDistance(0);
+    distanceRef.current = 0;
     setGameSpeed(3);
 
     coins.length = 0;
@@ -439,10 +451,10 @@ const GameCanvas = () => {
         screen.
       </p>
       <div>
-        <p>Distance: {distance} km</p>
+        <p>Distance: {distance.toFixed(2)} km</p>
         <p>Coins Collected: {coinsCollected}</p>
         <br />
-        <p>Best Score: {bestScore} km</p>
+        <p>Best Score: {bestScore} points</p>
       </div>
     </>
   );

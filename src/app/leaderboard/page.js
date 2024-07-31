@@ -13,7 +13,7 @@ const Leaderboard = () => {
         const data = await getLeaderboard();
         setLeaderboard(data);
       } catch (error) {
-        console.error("Failed to fetch leaderboard:", error);
+        toast("Something went wrong. Please try again later! 😓");
       }
     };
 
@@ -28,17 +28,13 @@ const Leaderboard = () => {
           <thead>
             <tr>
               <th>Username</th>
-              <th>Project A</th>
-              <th>Project B</th>
               <th>Total Score</th>
             </tr>
           </thead>
           <tbody>
-            {leaderboard.map((entry) => (
-              <tr key={entry.id}>
+            {leaderboard.map((entry, index) => (
+              <tr key={entry.id + index}>
                 <td>@{entry.username}</td>
-                <td>{entry.project_a_score}</td>
-                <td>{entry.project_b_score}</td>
                 <td>{entry.total_score}</td>
               </tr>
             ))}
