@@ -120,11 +120,24 @@ export const upsertScore = async (score) => {
   const userId = userData.user.id;
   const username = userData.user.user_metadata.username;
 
+  const { data: currentData, error: fetchError } = await supabase
+    .from("leaderboard")
+    .select("total_score")
+    .eq("user_id", userId)
+    .single();
+
+  if (fetchError) {
+    throw new Error(fetchError.message);
+  }
+
+  const currentScore = currentData?.total_score || 0;
+  const newScore = currentScore + score;
+
   const { data, error } = await supabase.from("leaderboard").upsert(
     {
       user_id: userId,
       username: username,
-      total_score: score
+      total_score: newScore
     },
     { onConflict: ["user_id"] }
   );
