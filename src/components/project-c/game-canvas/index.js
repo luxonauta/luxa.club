@@ -332,7 +332,7 @@ const GameCanvas = () => {
       life: () => player.life++,
       stamina: () => player.stamina++,
       dexterity: () => player.dexterity++,
-      speed: () => (player.speed += 0.5)
+      speed: () => { player.speed += 0.5; }
     };
     upgradeActions[upgradeType]();
     setShowUpgrade(false);
