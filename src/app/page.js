@@ -1,5 +1,6 @@
 import ProjectA from "@/components/project-a";
 import ProjectB from "@/components/project-b";
+import ProjectC from "@/components/project-c";
 
 const Home = () => (
   <section className="row flow-column-wrap align-start">
@@ -12,6 +13,7 @@ const Home = () => (
     </div>
     <ProjectA />
     <ProjectB />
+    <ProjectC />
   </section>
 );
 
