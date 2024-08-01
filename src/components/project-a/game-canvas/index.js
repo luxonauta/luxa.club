@@ -428,7 +428,7 @@ const GameCanvas = () => {
       <div className="game-container">
         <canvas ref={canvasRef} />
         {isGameOver && (
-          <div className="game-over row flow-column-wrap">
+          <div className="overlay row flow-column-wrap">
             <button
               type="button"
               onClick={restartGame}

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import GameCanvas from "./game-canvas";
+import "./index.scss";
 
 const ProjectC = () => {
   const [showGame, setShowGame] = useState(false);

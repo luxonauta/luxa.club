@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 
 /**
  * Draws a rounded rectangle on the canvas.
@@ -50,38 +50,47 @@ const drawEntities = (context, entities, color, cornerRadius = 0) => {
   });
 };
 
+/**
+ * Main game component.
+ * @returns {JSX.Element} The rendered game canvas and UI.
+ */
 const GameCanvas = () => {
   const canvasRef = useRef(null);
-  const [isGamePaused, setIsGamePaused] = useState(false);
-  const [spiders, setSpiders] = useState([]);
-  const [player, setPlayer] = useState({
-    x: window.innerWidth / 2,
-    y: window.innerHeight / 2,
-    width: 25.5,
-    height: 25.5,
-    life: 3,
-    stamina: 3,
-    dexterity: 1,
-    speed: 1.5,
-    rollCooldown: 0
+  const gameStateRef = useRef({
+    player: {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+      width: 25.5,
+      height: 25.5,
+      life: 3,
+      stamina: 2,
+      dexterity: 1,
+      speed: 2,
+      rollCooldown: 0,
+      invincible: false
+    },
+    enemies: [],
+    projectiles: [],
+    score: 0,
+    highScore: localStorage.getItem("highScore") || 0,
+    enemySpawnTime: 300,
+    enemyMaxSpeed: 0.8,
+    enemiesDefeated: 0
   });
-  const [bullets, setBullets] = useState([]);
+  const [isGamePaused, setIsGamePaused] = useState(false);
   const [score, setScore] = useState(0);
-  const [highScore, setHighScore] = useState(
-    localStorage.getItem("highScore") || 0
-  );
-  const [spiderSpawnTime, setSpiderSpawnTime] = useState(300);
-  const [spiderMaxSpeed, setSpiderMaxSpeed] = useState(0.8);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   const frameRef = useRef(0);
   const keysPressed = useRef({});
   const lastUpdateTimeRef = useRef(Date.now());
+  const lastRollTimeRef = useRef({});
 
   /**
-   * Spawns a new spider at a random position outside the viewport.
+   * Spawns a new enemy at a random position outside the viewport.
+   * @returns {Object} The newly spawned enemy.
    */
-  const spawnSpider = () => {
+  const spawnEnemy = useCallback(() => {
     const side = Math.floor(Math.random() * 4);
-    let x, y;
     const positionOptions = [
       { x: Math.random() * window.innerWidth, y: -20.5 },
       { x: Math.random() * window.innerWidth, y: window.innerHeight + 20.5 },
@@ -89,195 +98,281 @@ const GameCanvas = () => {
       { x: window.innerWidth + 20.5, y: Math.random() * window.innerHeight }
     ];
 
-    ({ x, y } = positionOptions[side]);
+    const { x, y } = positionOptions[side];
 
-    setSpiders((prevSpiders) => [
-      ...prevSpiders,
-      {
-        x,
-        y,
-        speed: Math.random() * spiderMaxSpeed + 0.2,
-        width: 20.5,
-        height: 20.5
-      }
-    ]);
-  };
+    return {
+      x,
+      y,
+      speed: Math.random() * gameStateRef.current.enemyMaxSpeed + 0.2,
+      width: 20.5,
+      height: 20.5
+    };
+  }, []);
 
   /**
-   * Updates the state of the game.
+   * Updates the game state.
    */
-  const updateGameState = () => {
-    setSpiders((prevSpiders) =>
-      prevSpiders.map((spider) => {
-        const dx = player.x - spider.x;
-        const dy = player.y - spider.y;
-        const angle = Math.atan2(dy, dx);
-        return {
-          ...spider,
-          x: spider.x + Math.cos(angle) * spider.speed,
-          y: spider.y + Math.sin(angle) * spider.speed
-        };
-      })
-    );
+  const updateGameState = useCallback(() => {
+    const now = Date.now();
+    const deltaTime = Math.min((now - lastUpdateTimeRef.current) / 1000, 0.1);
+    lastUpdateTimeRef.current = now;
 
-    setBullets((prevBullets) =>
-      prevBullets.map((bullet) => ({
-        ...bullet,
-        x: bullet.x + Math.cos(bullet.angle) * bullet.speed,
-        y: bullet.y + Math.sin(bullet.angle) * bullet.speed
-      }))
-    );
+    const { player, enemies, projectiles } = gameStateRef.current;
+
+    // Update enemies
+    gameStateRef.current.enemies = enemies.map((enemy) => {
+      const dx = player.x - enemy.x;
+      const dy = player.y - enemy.y;
+      const angle = Math.atan2(dy, dx);
+      return {
+        ...enemy,
+        x: enemy.x + Math.cos(angle) * enemy.speed * deltaTime * 60,
+        y: enemy.y + Math.sin(angle) * enemy.speed * deltaTime * 60
+      };
+    });
+
+    // Update projectiles
+    gameStateRef.current.projectiles = projectiles.map((projectile) => ({
+      ...projectile,
+      x:
+        projectile.x +
+        Math.cos(projectile.angle) * projectile.speed * deltaTime * 60,
+      y:
+        projectile.y +
+        Math.sin(projectile.angle) * projectile.speed * deltaTime * 60
+    }));
 
     checkCollisions();
-  };
+    checkBoundaryCollisions();
+  }, []);
 
   /**
    * Checks for collisions between entities.
    */
-  const checkCollisions = () => {
-    setSpiders((prevSpiders) =>
-      prevSpiders.filter((spider) => {
-        const hitByBullet = bullets.some((bullet) => {
-          const distance = Math.hypot(bullet.x - spider.x, bullet.y - spider.y);
-          if (distance < 20.5) {
-            setScore((prevScore) => prevScore + player.dexterity);
-            return true;
-          }
-          return false;
-        });
-        return !hitByBullet;
-      })
-    );
+  const checkCollisions = useCallback(() => {
+    const { player, enemies, projectiles } = gameStateRef.current;
 
-    const playerHit = spiders.some((spider) => {
-      const distance = Math.hypot(spider.x - player.x, spider.y - player.y);
-      if (distance < 20.5) {
-        if (player.life > 1) {
-          setPlayer((prevPlayer) => ({
-            ...prevPlayer,
-            life: prevPlayer.life - 1
-          }));
-        } else {
-          handleGameOver();
+    // Check projectile-enemy collisions
+    gameStateRef.current.projectiles = projectiles.filter((projectile) => {
+      const hitEnemy = enemies.find((enemy) => {
+        const distance = Math.hypot(
+          projectile.x - (enemy.x + enemy.width / 2),
+          projectile.y - (enemy.y + enemy.height / 2)
+        );
+        return distance < (enemy.width + enemy.height) / 4;
+      });
+
+      if (hitEnemy) {
+        gameStateRef.current.enemies = enemies.filter(
+          (enemy) => enemy !== hitEnemy
+        );
+        gameStateRef.current.enemiesDefeated++;
+        gameStateRef.current.score += player.dexterity;
+        setScore(gameStateRef.current.score);
+
+        if (
+          gameStateRef.current.enemiesDefeated % 10 === 0 &&
+          gameStateRef.current.enemiesDefeated > 0
+        ) {
+          setShowUpgrade(true);
+          setIsGamePaused(true);
         }
-        return true;
+
+        return false; // Remove the projectile
       }
-      return false;
+      return true; // Keep the projectile
     });
 
-    if (playerHit) {
-      setIsGamePaused(true);
+    // Check player-enemy collisions
+    if (!player.invincible) {
+      const hitEnemy = enemies.find((enemy) => {
+        const distance = Math.hypot(
+          enemy.x + enemy.width / 2 - (player.x + player.width / 2),
+          enemy.y + enemy.height / 2 - (player.y + player.height / 2)
+        );
+        return (
+          distance <
+          (enemy.width + enemy.height + player.width + player.height) / 4
+        );
+      });
+
+      if (hitEnemy) {
+        handlePlayerHit();
+        gameStateRef.current.enemies = enemies.filter(
+          (enemy) => enemy !== hitEnemy
+        );
+      }
     }
-  };
+  }, []);
 
   /**
-   * Handles the game over state.
+   * Checks for collisions between the player and canvas boundaries.
    */
-  const handleGameOver = () => {
-    setIsGamePaused(true);
-    if (score > highScore) {
-      setHighScore(score);
-      localStorage.setItem("highScore", score);
+  const checkBoundaryCollisions = useCallback(() => {
+    const { player } = gameStateRef.current;
+    const canvas = canvasRef.current;
+    if (canvas) {
+      const scale = window.devicePixelRatio;
+      const isOutOfBounds =
+        player.x < 0 ||
+        player.x + player.width > canvas.width / scale ||
+        player.y < 0 ||
+        player.y + player.height > canvas.height / scale;
+      if (isOutOfBounds && !player.invincible) {
+        // Instead of calling handlePlayerHit, just adjust the player's position
+        player.x = Math.max(
+          0,
+          Math.min(player.x, canvas.width / scale - player.width)
+        );
+        player.y = Math.max(
+          0,
+          Math.min(player.y, canvas.height / scale - player.height)
+        );
+      }
     }
-  };
+  }, []);
+
+  /**
+   * Handles player getting hit.
+   */
+  const handlePlayerHit = useCallback(() => {
+    const { player } = gameStateRef.current;
+    player.life--;
+    player.invincible = true;
+    setTimeout(() => {
+      if (gameStateRef.current) {
+        gameStateRef.current.player.invincible = false;
+      }
+    }, 2000);
+    if (player.life <= 0) {
+      setIsGamePaused(true);
+    }
+  }, []);
 
   /**
    * Restarts the game.
    */
-  const restartGame = () => {
-    setPlayer({
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-      width: 25.5,
-      height: 25.5,
-      life: 3,
-      stamina: 3,
-      dexterity: 1,
-      speed: 1.5,
-      rollCooldown: 0
-    });
-    setSpiders([]);
-    setBullets([]);
-    setSpiderSpawnTime(300);
-    setSpiderMaxSpeed(0.8);
+  const restartGame = useCallback(() => {
+    gameStateRef.current = {
+      ...gameStateRef.current,
+      player: {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+        width: 25.5,
+        height: 25.5,
+        life: 3,
+        stamina: 2,
+        dexterity: 1,
+        speed: 2,
+        rollCooldown: 0,
+        invincible: false
+      },
+      enemies: Array(10)
+        .fill()
+        .map(() => spawnEnemy()),
+      projectiles: [],
+      score: 0,
+      enemySpawnTime: 300,
+      enemyMaxSpeed: 0.8
+    };
     setScore(0);
     setIsGamePaused(false);
     frameRef.current = 0;
     lastUpdateTimeRef.current = Date.now();
-    for (let i = 0; i < 10; i++) {
-      spawnSpider();
-    }
-  };
+  }, [spawnEnemy]);
 
   /**
    * Handles key down events.
    * @param {KeyboardEvent} event - The keyboard event.
    */
-  const handleKeyDown = (event) => {
+  const handleKeyDown = useCallback((event) => {
     keysPressed.current[event.code] = true;
-  };
+  }, []);
 
   /**
    * Handles key up events.
    * @param {KeyboardEvent} event - The keyboard event.
    */
-  const handleKeyUp = (event) => {
+  const handleKeyUp = useCallback((event) => {
     keysPressed.current[event.code] = false;
-  };
+  }, []);
 
   /**
-   * Handles shooting bullets.
+   * Handles shooting projectiles.
    * @param {MouseEvent} e - The mouse event.
    */
-  const handleShoot = (e) => {
-    const angle = Math.atan2(e.clientY - player.y, e.clientX - player.x);
-    setBullets((prevBullets) => [
-      ...prevBullets,
-      {
-        x: player.x + player.width / 2,
-        y: player.y + player.height / 2,
-        angle,
-        speed: 10,
-        width: 5,
-        height: 5
-      }
-    ]);
-  };
+  const handleShoot = useCallback((e) => {
+    const { player } = gameStateRef.current;
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const scale = window.devicePixelRatio;
+    const x = (e.clientX - rect.left) * scale;
+    const y = (e.clientY - rect.top) * scale;
+    const angle = Math.atan2(
+      y - (player.y + player.height / 2) * scale,
+      x - (player.x + player.width / 2) * scale
+    );
+    gameStateRef.current.projectiles.push({
+      x: player.x + player.width / 2,
+      y: player.y + player.height / 2,
+      angle,
+      speed: 10,
+      width: 5,
+      height: 5
+    });
+  }, []);
 
   /**
    * Handles player upgrades.
    * @param {string} upgradeType - The type of upgrade.
    */
-  const handleUpgrade = (upgradeType) => {
-    const upgrades = {
-      life: () =>
-        setPlayer((prevPlayer) => ({
-          ...prevPlayer,
-          life: prevPlayer.life + 1
-        })),
-      stamina: () =>
-        setPlayer((prevPlayer) => ({
-          ...prevPlayer,
-          stamina: prevPlayer.stamina + 1
-        })),
-      dexterity: () =>
-        setPlayer((prevPlayer) => ({
-          ...prevPlayer,
-          dexterity: prevPlayer.dexterity + 1
-        })),
-      speed: () =>
-        setPlayer((prevPlayer) => ({
-          ...prevPlayer,
-          speed: prevPlayer.speed + 0.5
-        }))
+  const handleUpgrade = useCallback((upgradeType) => {
+    const { player } = gameStateRef.current;
+    const upgradeActions = {
+      life: () => player.life++,
+      stamina: () => player.stamina++,
+      dexterity: () => player.dexterity++,
+      speed: () => (player.speed += 0.5)
     };
-    upgrades[upgradeType]();
+    upgradeActions[upgradeType]();
+    setShowUpgrade(false);
     setIsGamePaused(false);
-  };
+  }, []);
+
+  /**
+   * Handles player movement.
+   */
+  const handlePlayerMovement = useCallback(() => {
+    const { player } = gameStateRef.current;
+    const speed = player.speed;
+    const now = Date.now();
+
+    const move = (direction) => {
+      const lastRollTime = lastRollTimeRef.current[direction] || 0;
+      if (now - lastRollTime < 300 && player.stamina > 0) {
+        player[direction === "x" ? "x" : "y"] +=
+          (direction === "x" ? speed : -speed) * 3;
+        player.stamina--;
+        player.rollCooldown = now + 1000;
+      } else if (now > player.rollCooldown) {
+        player[direction === "x" ? "x" : "y"] +=
+          direction === "x" ? speed : -speed;
+      }
+      lastRollTimeRef.current[direction] = now;
+    };
+
+    if (keysPressed.current["ArrowUp"] || keysPressed.current["KeyW"])
+      player.y -= speed;
+    if (keysPressed.current["ArrowDown"] || keysPressed.current["KeyS"])
+      player.y += speed;
+    if (keysPressed.current["ArrowLeft"] || keysPressed.current["KeyA"])
+      player.x -= speed;
+    if (keysPressed.current["ArrowRight"] || keysPressed.current["KeyD"])
+      player.x += speed;
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
 
     const resizeCanvas = () => {
       const scale = window.devicePixelRatio;
@@ -285,11 +380,8 @@ const GameCanvas = () => {
       canvas.height = Math.floor(canvas.width / 2);
       canvas.style.width = `${canvas.width / scale}px`;
       canvas.style.height = `${canvas.height / scale}px`;
-      setPlayer((prevPlayer) => ({
-        ...prevPlayer,
-        x: canvas.width / 2 / scale,
-        y: canvas.height / 2 / scale
-      }));
+      gameStateRef.current.player.x = canvas.width / 2 / scale;
+      gameStateRef.current.player.y = canvas.height / 2 / scale;
     };
 
     resizeCanvas();
@@ -304,115 +396,123 @@ const GameCanvas = () => {
       window.removeEventListener("keyup", handleKeyUp);
       canvas.removeEventListener("click", handleShoot);
     };
-  }, []);
+  }, [handleKeyDown, handleKeyUp, handleShoot]);
 
   useEffect(() => {
+    let animationFrameId;
+
     const gameLoop = () => {
-      const canvas = canvasRef.current;
-      const context = canvas.getContext("2d");
+      if (!isGamePaused && gameStateRef.current) {
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const context = canvas.getContext("2d");
 
-      if (!isGamePaused) {
-        context.clearRect(0, 0, canvas.width, canvas.height);
+          context.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw player with rounded corners
-        context.fillStyle = "#3498DB";
-        drawRoundedRect(
-          context,
-          player.x,
-          player.y,
-          player.width,
-          player.height,
-          6
-        );
+          const { player, enemies, projectiles } = gameStateRef.current;
 
-        drawEntities(context, spiders, "#EF4444", 6);
-        drawEntities(context, bullets, "#3498DB", 2);
+          context.fillStyle = "#3498DB";
+          drawRoundedRect(
+            context,
+            player.x,
+            player.y,
+            player.width,
+            player.height,
+            6
+          );
 
-        updateGameState();
+          drawEntities(context, enemies, "#EF4444", 6);
+          drawEntities(context, projectiles, "#3498DB", 2);
 
-        frameRef.current++;
-        if (frameRef.current >= spiderSpawnTime) {
-          spawnSpider();
-          setSpiderSpawnTime((prevTime) => prevTime * 0.95);
-          frameRef.current = 0;
+          updateGameState();
+          handlePlayerMovement();
+          setScore(gameStateRef.current.score);
+
+          frameRef.current++;
+          if (frameRef.current >= gameStateRef.current.enemySpawnTime) {
+            gameStateRef.current.enemies.push(spawnEnemy());
+            gameStateRef.current.enemySpawnTime *= 0.95;
+            frameRef.current = 0;
+          }
         }
-
-        const currentTime = Date.now();
-        if (currentTime - lastUpdateTimeRef.current >= 60000) {
-          setIsGamePaused(true);
-          lastUpdateTimeRef.current = currentTime;
-        }
-
-        const speed = player.speed;
-        const movePlayer = (dx, dy) => {
-          setPlayer((prevPlayer) => ({
-            ...prevPlayer,
-            x: Math.max(
-              0,
-              Math.min(
-                canvas.width / window.devicePixelRatio - player.width,
-                prevPlayer.x + dx
-              )
-            ),
-            y: Math.max(
-              0,
-              Math.min(
-                canvas.height / window.devicePixelRatio - player.height,
-                prevPlayer.y + dy
-              )
-            )
-          }));
-        };
-
-        if (keysPressed.current["ArrowUp"] || keysPressed.current["KeyW"])
-          movePlayer(0, -speed);
-        if (keysPressed.current["ArrowDown"] || keysPressed.current["KeyS"])
-          movePlayer(0, speed);
-        if (keysPressed.current["ArrowLeft"] || keysPressed.current["KeyA"])
-          movePlayer(-speed, 0);
-        if (keysPressed.current["ArrowRight"] || keysPressed.current["KeyD"])
-          movePlayer(speed, 0);
       }
 
-      requestAnimationFrame(gameLoop);
+      animationFrameId = requestAnimationFrame(gameLoop);
     };
 
     gameLoop();
-  }, [isGamePaused, player]);
+
+    return () => {
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [isGamePaused, updateGameState, handlePlayerMovement, spawnEnemy]);
 
   return (
-    <div className="game-container" tabIndex="0">
-      <canvas ref={canvasRef} />
-      {isGamePaused && (
-        <div className="overlay">
-          {player.life > 0 ? (
-            <div className="upgrade-options">
-              <h2>Choose an Upgrade</h2>
-              <button onClick={() => handleUpgrade("life")}>
-                Increase Life
-              </button>
-              <button onClick={() => handleUpgrade("stamina")}>
-                Increase Stamina
-              </button>
-              <button onClick={() => handleUpgrade("dexterity")}>
-                Increase Dexterity
-              </button>
-              <button onClick={() => handleUpgrade("speed")}>
-                Increase Speed
-              </button>
-            </div>
-          ) : (
-            <div className="game-over">
-              <h2>Game Over</h2>
-              <p>Current Score: {score}</p>
-              <p>High Score: {highScore}</p>
-              <button onClick={restartGame}>Restart</button>
-            </div>
-          )}
-        </div>
-      )}
-      <div className="score">Score: {score}</div>
-    </div>
+    <>
+      <div className="game-container" tabIndex="0">
+        <canvas ref={canvasRef} />
+        {(isGamePaused || showUpgrade) && (
+          <div className="overlay row">
+            {showUpgrade && (
+              <div className="upgrade-options row">
+                <h2>Choose an Upgrade</h2>
+                <div className="row flow-row-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => handleUpgrade("life")}
+                    className="action"
+                  >
+                    Life
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpgrade("stamina")}
+                    className="action"
+                  >
+                    Stamina
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpgrade("dexterity")}
+                    className="action"
+                  >
+                    Dexterity
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUpgrade("speed")}
+                    className="action"
+                  >
+                    Speed
+                  </button>
+                </div>
+              </div>
+            )}
+            {isGamePaused &&
+              !showUpgrade &&
+              gameStateRef.current.player.life <= 0 && (
+                <div className="game-over row flow-column-wrap">
+                  <button
+                    type="button"
+                    onClick={restartGame}
+                    className="action primary"
+                  >
+                    Restart
+                  </button>
+                </div>
+              )}
+          </div>
+        )}
+      </div>
+      <div>
+        <p>Score: {score}</p>
+        <p>Life: {gameStateRef.current.player.life}</p>
+        <p>Stamina: {gameStateRef.current.player.stamina}</p>
+        <p>Dexterity: {gameStateRef.current.player.dexterity}</p>
+        <p>Speed: {gameStateRef.current.player.speed.toFixed(1)}</p>
+        <p>Enemies Defeated: {gameStateRef.current.enemiesDefeated}</p>
+      </div>
+    </>
   );
 };
 
