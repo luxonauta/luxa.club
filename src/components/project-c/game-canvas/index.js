@@ -58,14 +58,14 @@ const GameCanvas = () => {
   const canvasRef = useRef(null);
   const gameStateRef = useRef({
     player: {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-      width: 25.5,
-      height: 25.5,
+      x: 0, // Will be set properly in resizeCanvas
+      y: 0, // Will be set properly in resizeCanvas
+      width: 20.5,
+      height: 20.5,
       life: 3,
-      stamina: 2,
+      stamina: 1,
       dexterity: 1,
-      speed: 2,
+      speed: 1,
       rollCooldown: 0,
       invincible: false
     },
@@ -84,18 +84,24 @@ const GameCanvas = () => {
   const keysPressed = useRef({});
   const lastUpdateTimeRef = useRef(Date.now());
   const lastRollTimeRef = useRef({});
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   /**
    * Spawns a new enemy at a random position outside the viewport.
    * @returns {Object} The newly spawned enemy.
    */
-  const spawnEnemy = useCallback(() => {
+  const spawnEnemy = () => {
+    const canvas = canvasRef.current;
+    const scale = window.devicePixelRatio;
+    const canvasWidth = canvas.width / scale;
+    const canvasHeight = canvas.height / scale;
+
     const side = Math.floor(Math.random() * 4);
     const positionOptions = [
-      { x: Math.random() * window.innerWidth, y: -20.5 },
-      { x: Math.random() * window.innerWidth, y: window.innerHeight + 20.5 },
-      { x: -20.5, y: Math.random() * window.innerHeight },
-      { x: window.innerWidth + 20.5, y: Math.random() * window.innerHeight }
+      { x: Math.random() * canvasWidth, y: -20.5 },
+      { x: Math.random() * canvasWidth, y: canvasHeight + 20.5 },
+      { x: -20.5, y: Math.random() * canvasHeight },
+      { x: canvasWidth + 20.5, y: Math.random() * canvasHeight }
     ];
 
     const { x, y } = positionOptions[side];
@@ -107,12 +113,12 @@ const GameCanvas = () => {
       width: 20.5,
       height: 20.5
     };
-  }, []);
+  };
 
   /**
    * Updates the game state.
    */
-  const updateGameState = useCallback(() => {
+  const updateGameState = () => {
     const now = Date.now();
     const deltaTime = Math.min((now - lastUpdateTimeRef.current) / 1000, 0.1);
     lastUpdateTimeRef.current = now;
@@ -144,12 +150,12 @@ const GameCanvas = () => {
 
     checkCollisions();
     checkBoundaryCollisions();
-  }, []);
+  };
 
   /**
    * Checks for collisions between entities.
    */
-  const checkCollisions = useCallback(() => {
+  const checkCollisions = () => {
     const { player, enemies, projectiles } = gameStateRef.current;
 
     // Check projectile-enemy collisions
@@ -203,39 +209,22 @@ const GameCanvas = () => {
         );
       }
     }
-  }, []);
+  };
 
   /**
    * Checks for collisions between the player and canvas boundaries.
    */
-  const checkBoundaryCollisions = useCallback(() => {
+  const checkBoundaryCollisions = () => {
     const { player } = gameStateRef.current;
     const canvas = canvasRef.current;
-    if (canvas) {
-      const scale = window.devicePixelRatio;
-      const isOutOfBounds =
-        player.x < 0 ||
-        player.x + player.width > canvas.width / scale ||
-        player.y < 0 ||
-        player.y + player.height > canvas.height / scale;
-      if (isOutOfBounds && !player.invincible) {
-        // Instead of calling handlePlayerHit, just adjust the player's position
-        player.x = Math.max(
-          0,
-          Math.min(player.x, canvas.width / scale - player.width)
-        );
-        player.y = Math.max(
-          0,
-          Math.min(player.y, canvas.height / scale - player.height)
-        );
-      }
-    }
-  }, []);
+    player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
+    player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
+  };
 
   /**
    * Handles player getting hit.
    */
-  const handlePlayerHit = useCallback(() => {
+  const handlePlayerHit = () => {
     const { player } = gameStateRef.current;
     player.life--;
     player.invincible = true;
@@ -247,7 +236,7 @@ const GameCanvas = () => {
     if (player.life <= 0) {
       setIsGamePaused(true);
     }
-  }, []);
+  };
 
   /**
    * Restarts the game.
@@ -281,12 +270,28 @@ const GameCanvas = () => {
     lastUpdateTimeRef.current = Date.now();
   }, [spawnEnemy]);
 
+  const handleRoll = () => {
+    const { player } = gameStateRef.current;
+    const now = Date.now();
+
+    if (now - lastRollTimeRef.current > player.rollCooldown * 1000) {
+      lastRollTimeRef.current = now;
+      player.invincible = true;
+      setTimeout(() => {
+        if (gameStateRef.current) {
+          gameStateRef.current.player.invincible = false;
+        }
+      }, 500); // Adjust the duration of invincibility during the roll
+    }
+  };
+
   /**
    * Handles key down events.
    * @param {KeyboardEvent} event - The keyboard event.
    */
   const handleKeyDown = useCallback((event) => {
     keysPressed.current[event.code] = true;
+    if (event.code === "Space") handleRoll();
   }, []);
 
   /**
@@ -299,15 +304,12 @@ const GameCanvas = () => {
 
   /**
    * Handles shooting projectiles.
-   * @param {MouseEvent} e - The mouse event.
    */
-  const handleShoot = useCallback((e) => {
+  const handleShoot = useCallback(() => {
     const { player } = gameStateRef.current;
-    const canvas = canvasRef.current;
-    const rect = canvas.getBoundingClientRect();
     const scale = window.devicePixelRatio;
-    const x = (e.clientX - rect.left) * scale;
-    const y = (e.clientY - rect.top) * scale;
+    const x = mousePosition.x * scale;
+    const y = mousePosition.y * scale;
     const angle = Math.atan2(
       y - (player.y + player.height / 2) * scale,
       x - (player.x + player.width / 2) * scale
@@ -320,6 +322,25 @@ const GameCanvas = () => {
       width: 5,
       height: 5
     });
+  }, [mousePosition]);
+
+  useEffect(() => {
+    const handleMouseMove = (e) => {
+      const canvas = canvasRef.current;
+      const rect = canvas.getBoundingClientRect();
+      const scale = window.devicePixelRatio;
+
+      setMousePosition({
+        x: (e.clientX - rect.left) * scale,
+        y: (e.clientY - rect.top) * scale
+      });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
   }, []);
 
   /**
@@ -332,7 +353,9 @@ const GameCanvas = () => {
       life: () => player.life++,
       stamina: () => player.stamina++,
       dexterity: () => player.dexterity++,
-      speed: () => { player.speed += 0.5; }
+      speed: () => {
+        player.speed += 0.5;
+      }
     };
     upgradeActions[upgradeType]();
     setShowUpgrade(false);
@@ -342,34 +365,26 @@ const GameCanvas = () => {
   /**
    * Handles player movement.
    */
-  const handlePlayerMovement = useCallback(() => {
+  const handlePlayerMovement = () => {
     const { player } = gameStateRef.current;
     const speed = player.speed;
-    const now = Date.now();
 
-    const move = (direction) => {
-      const lastRollTime = lastRollTimeRef.current[direction] || 0;
-      if (now - lastRollTime < 300 && player.stamina > 0) {
-        player[direction === "x" ? "x" : "y"] +=
-          (direction === "x" ? speed : -speed) * 3;
-        player.stamina--;
-        player.rollCooldown = now + 1000;
-      } else if (now > player.rollCooldown) {
-        player[direction === "x" ? "x" : "y"] +=
-          direction === "x" ? speed : -speed;
-      }
-      lastRollTimeRef.current[direction] = now;
+    const move = (dx, dy) => {
+      player.x += dx;
+      player.y += dy;
     };
 
     if (keysPressed.current["ArrowUp"] || keysPressed.current["KeyW"])
-      player.y -= speed;
+      move(0, -speed);
     if (keysPressed.current["ArrowDown"] || keysPressed.current["KeyS"])
-      player.y += speed;
+      move(0, speed);
     if (keysPressed.current["ArrowLeft"] || keysPressed.current["KeyA"])
-      player.x -= speed;
+      move(-speed, 0);
     if (keysPressed.current["ArrowRight"] || keysPressed.current["KeyD"])
-      player.x += speed;
-  }, []);
+      move(speed, 0);
+
+    checkBoundaryCollisions();
+  };
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -377,14 +392,23 @@ const GameCanvas = () => {
     const resizeCanvas = () => {
       const scale = window.devicePixelRatio;
       canvas.width = Math.floor(canvas.parentElement.clientWidth * scale);
-      canvas.height = Math.floor(canvas.width / 2);
+      canvas.height = Math.floor(canvas.parentElement.clientHeight * scale);
       canvas.style.width = `${canvas.width / scale}px`;
       canvas.style.height = `${canvas.height / scale}px`;
-      gameStateRef.current.player.x = canvas.width / 2 / scale;
-      gameStateRef.current.player.y = canvas.height / 2 / scale;
+
+      if (
+        gameStateRef.current.player.x === 0 &&
+        gameStateRef.current.player.y === 0
+      ) {
+        gameStateRef.current.player.x =
+          canvas.width / (2 * scale) - gameStateRef.current.player.width / 2;
+        gameStateRef.current.player.y =
+          canvas.height / (2 * scale) - gameStateRef.current.player.height / 2;
+      }
     };
 
     resizeCanvas();
+
     window.addEventListener("resize", resizeCanvas);
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
@@ -404,12 +428,13 @@ const GameCanvas = () => {
     const gameLoop = () => {
       if (!isGamePaused && gameStateRef.current) {
         const canvas = canvasRef.current;
+
         if (canvas) {
           const context = canvas.getContext("2d");
 
-          context.clearRect(0, 0, canvas.width, canvas.height);
-
           const { player, enemies, projectiles } = gameStateRef.current;
+
+          context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before drawing
 
           context.fillStyle = "#3498DB";
           drawRoundedRect(
