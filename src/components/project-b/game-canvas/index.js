@@ -3,7 +3,7 @@ import { toast } from "react-hot-toast";
 import useSound from "use-sound";
 import { upsertScore } from "@/utils/supabase/actions";
 
-const initialGameState = [
+const getInitialGameState = () => [
   { pos: [1, 1], type: "initial", solution: 1 },
   { pos: [2, 2], solution: 2 },
   { pos: [3, 3], solution: 3 },
@@ -22,7 +22,7 @@ const TRUE_SOUND_URL = "/sounds/true.mp3";
 const FALSE_SOUND_URL = "/sounds/false.mp3";
 
 const GameCanvas = () => {
-  const [gameState, setGameState] = useState(initialGameState);
+  const [gameState, setGameState] = useState(getInitialGameState());
   const [currentStep, setCurrentStep] = useState(1);
   const [gameOver, setGameOver] = useState(false);
   const [lives, setLives] = useState(3);
@@ -193,10 +193,14 @@ const GameCanvas = () => {
    */
   const restartGame = () => {
     setGameState(
-      initialGameState.map((block) => ({
+      getInitialGameState().map((block) => ({
         ...block,
         activated: false,
-        partialSolution: undefined
+        partialSolution: undefined,
+        solution: Array.isArray(block.solution)
+          ? [...block.solution]
+          : block.solution,
+        type: block.type
       }))
     );
     setCurrentStep(1);
@@ -245,7 +249,7 @@ const GameCanvas = () => {
           {gameState.map((block, index) => renderBlock(block, index))}
         </div>
         {gameOver && (
-          <div className="game-over row flow-column-wrap">
+          <div className="overlay row flow-column-wrap">
             <button
               type="button"
               onClick={restartGame}
