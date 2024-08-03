@@ -140,19 +140,23 @@ const GameCanvas = () => {
     resizeCanvas();
 
     const handleKeyDown = (event) => {
+      event.preventDefault(); // Prevent the default behavior of the key
       keysPressed[event.code] = true;
     };
 
     const handleKeyUp = (event) => {
+      event.preventDefault();
       keysPressed[event.code] = false;
     };
 
     const handleTouchStart = (event) => {
+      event.preventDefault();
       keysPressed.Space = true;
       event.preventDefault();
     };
 
     const handleTouchEnd = (event) => {
+      event.preventDefault();
       keysPressed.Space = false;
       event.preventDefault();
     };

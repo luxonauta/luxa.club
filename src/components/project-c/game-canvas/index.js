@@ -350,6 +350,7 @@ const GameCanvas = () => {
    * @param {KeyboardEvent} event - The keyboard event.
    */
   const handleKeyDown = useCallback((event) => {
+    event.preventDefault(); // Prevent the default behavior of the key
     keysPressed.current[event.code] = true;
     if (event.code === "Space") handleRoll();
   }, []);
@@ -359,35 +360,40 @@ const GameCanvas = () => {
    * @param {KeyboardEvent} event - The keyboard event.
    */
   const handleKeyUp = useCallback((event) => {
+    event.preventDefault();
     keysPressed.current[event.code] = false;
   }, []);
 
   /**
    * Handles shooting action by creating projectiles.
    */
-  const handleShoot = useCallback(() => {
-    playShoot();
-    const { player } = gameStateRef.current;
-    const scale = window.devicePixelRatio;
-    const x = mousePosition.x * scale;
-    const y = mousePosition.y * scale;
-    const baseAngle = Math.atan2(
-      y - (player.y + player.height / 2) * scale,
-      x - (player.x + player.width / 2) * scale
-    );
+  const handleShoot = useCallback(
+    (event) => {
+      event.preventDefault();
+      playShoot();
+      const { player } = gameStateRef.current;
+      const scale = window.devicePixelRatio;
+      const x = mousePosition.x * scale;
+      const y = mousePosition.y * scale;
+      const baseAngle = Math.atan2(
+        y - (player.y + player.height / 2) * scale,
+        x - (player.x + player.width / 2) * scale
+      );
 
-    for (let i = 0; i < player.multishot; i++) {
-      const angle = baseAngle + (i - Math.floor(player.multishot / 2)) * 0.1;
-      gameStateRef.current.projectiles.push({
-        x: player.x + player.width / 2,
-        y: player.y + player.height / 2,
-        angle,
-        speed: 10,
-        width: 5,
-        height: 5
-      });
-    }
-  }, [mousePosition, playShoot]);
+      for (let i = 0; i < player.multishot; i++) {
+        const angle = baseAngle + (i - Math.floor(player.multishot / 2)) * 0.1;
+        gameStateRef.current.projectiles.push({
+          x: player.x + player.width / 2,
+          y: player.y + player.height / 2,
+          angle,
+          speed: 10,
+          width: 5,
+          height: 5
+        });
+      }
+    },
+    [mousePosition, playShoot]
+  );
 
   useEffect(() => {
     /**
@@ -420,10 +426,18 @@ const GameCanvas = () => {
     (upgradeType) => {
       const { player } = gameStateRef.current;
       const upgradeActions = {
-        life: () => { player.life++; },
-        stamina: () => { player.stamina++; },
-        speed: () => { player.speed += 0.5; },
-        multishot: () => { player.multishot += 1; }
+        life: () => {
+          player.life++;
+        },
+        stamina: () => {
+          player.stamina++;
+        },
+        speed: () => {
+          player.speed += 0.5;
+        },
+        multishot: () => {
+          player.multishot += 1;
+        }
       };
 
       if (upgradeActions[upgradeType]) {
@@ -624,7 +638,7 @@ const GameCanvas = () => {
           </div>
         )}
       </div>
-      <div className="table" tabIndex={0}>
+      <div className="table">
         <table>
           <thead>
             <tr>
