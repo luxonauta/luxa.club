@@ -123,14 +123,19 @@ export const upsertScore = async (score) => {
   const { data: currentData, error: fetchError } = await supabase
     .from("leaderboard")
     .select("total_score")
-    .eq("user_id", userId)
-    .single();
+    .eq("user_id", userId);
 
   if (fetchError) {
     throw new Error(fetchError.message);
   }
 
-  const currentScore = currentData?.total_score || 0;
+  let currentScore = 0;
+  if (currentData.length === 1) {
+    currentScore = currentData[0].total_score;
+  } else if (currentData.length > 1) {
+    currentScore = currentData[0].total_score;
+  }
+
   const newScore = currentScore + score;
 
   const { data, error } = await supabase.from("leaderboard").upsert(
