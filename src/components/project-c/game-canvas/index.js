@@ -1,62 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
+import useSound from "use-sound";
+import { drawRoundedRect } from "@/utils/draw-rounded-rect";
 
 /**
- * Draws a rounded rectangle on the canvas.
- * @param {CanvasRenderingContext2D} context - The canvas rendering context.
- * @param {number} x - The x-coordinate of the rectangle.
- * @param {number} y - The y-coordinate of the rectangle.
- * @param {number} width - The width of the rectangle.
- * @param {number} height - The height of the rectangle.
- * @param {number} radius - The radius of the corners.
+ * Initializes the game state.
+ * @returns {Object} The initial game state.
  */
-const drawRoundedRect = (context, x, y, width, height, radius) => {
-  context.beginPath();
-  context.moveTo(x + radius, y);
-  context.lineTo(x + width - radius, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + radius);
-  context.lineTo(x + width, y + height - radius);
-  context.quadraticCurveTo(
-    x + width,
-    y + height,
-    x + width - radius,
-    y + height
-  );
-  context.lineTo(x + radius, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - radius);
-  context.lineTo(x, y + radius);
-  context.quadraticCurveTo(x, y, x + radius, y);
-  context.closePath();
-  context.fill();
-};
-
-/**
- * Draws multiple entities on the canvas.
- * @param {CanvasRenderingContext2D} context - The canvas rendering context.
- * @param {Array} entities - The entities to draw.
- * @param {string} color - The color of the entities.
- * @param {number} cornerRadius - The radius of the corners.
- */
-const drawEntities = (context, entities, color, cornerRadius = 0) => {
-  context.fillStyle = color;
-  entities.forEach((entity) => {
-    drawRoundedRect(
-      context,
-      entity.x,
-      entity.y,
-      entity.width,
-      entity.height,
-      cornerRadius
-    );
-  });
-};
-
-/**
- * Main game component rendering the game canvas and UI.
- * @returns {JSX.Element} The rendered game canvas and UI.
- */
-const GameCanvas = () => {
-  const canvasRef = useRef(null);
-  const gameStateRef = useRef({
+const initializeGameState = () => {
+  return {
     player: {
       x: 0,
       y: 0,
@@ -71,7 +22,7 @@ const GameCanvas = () => {
       rollDirection: { x: 0, y: 0 },
       rollDistance: 0,
       rollSpeed: 10,
-      maxRollDistance: Math.sqrt(25.5 ** 2 * 2) * 2,
+      maxRollDistance: Math.sqrt(12.75 ** 2 * 2) * 2,
       multishot: 1,
       upgrades: 0,
       shadows: []
@@ -83,7 +34,30 @@ const GameCanvas = () => {
     enemySpawnTime: 300,
     enemyMaxSpeed: 0.8,
     enemiesDefeated: 0
+  };
+};
+
+/**
+ * Draws multiple entities on the canvas.
+ * @param {CanvasRenderingContext2D} context - The canvas rendering context.
+ * @param {Array<Object>} entities - The entities to draw.
+ * @param {string} color - The color of the entities.
+ * @param {number} cornerRadius - The radius of the corners.
+ */
+const drawEntities = (context, entities, color, cornerRadius = 0) => {
+  context.fillStyle = color;
+  entities.forEach(({ x, y, width, height }) => {
+    drawRoundedRect(context, x, y, width, height, cornerRadius);
   });
+};
+
+const ROLL_SOUND_URL = "/sounds/roll.mp3";
+const SHOOT_SOUND_URL = "/sounds/shoot.mp3";
+const SPAWN_ENEMY_SOUND_URL = "/sounds/spawn-enemy.mp3";
+
+const GameCanvas = () => {
+  const canvasRef = useRef(null);
+  const gameStateRef = useRef(initializeGameState());
   const [isGamePaused, setIsGamePaused] = useState(false);
   const [score, setScore] = useState(0);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -93,8 +67,22 @@ const GameCanvas = () => {
   const lastRollTimeRef = useRef(Date.now());
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [enemiesToNextUpgrade, setEnemiesToNextUpgrade] = useState(10);
+  const [shouldPlaySpawnSound, setShouldPlaySpawnSound] = useState(true);
 
+  const [playRoll] = useSound(ROLL_SOUND_URL, { volume: 1 });
+  const [playShoot] = useSound(SHOOT_SOUND_URL, { volume: 0.3 });
+  const [playSpawnEnemy] = useSound(SPAWN_ENEMY_SOUND_URL, {
+    playbackRate: 1.5,
+    volume: 0.1,
+    interrupt: true
+  });
+
+  /**
+   * Spawns a new enemy at a random position around the canvas.
+   * @returns {Object} The new enemy.
+   */
   const spawnEnemy = useCallback(() => {
+    if (shouldPlaySpawnSound) playSpawnEnemy();
     const canvas = canvasRef.current;
     const scale = window.devicePixelRatio;
     const canvasWidth = canvas.width / scale;
@@ -114,16 +102,58 @@ const GameCanvas = () => {
       width: 20.5,
       height: 20.5
     };
-  }, []);
+  }, [playSpawnEnemy, shouldPlaySpawnSound]);
 
+  /**
+   * Updates the game state including player, enemies, and projectiles.
+   */
   const updateGameState = () => {
     const now = Date.now();
     const deltaTime = Math.min((now - lastUpdateTimeRef.current) / 1000, 0.1);
     lastUpdateTimeRef.current = now;
 
-    const { player, enemies, projectiles } = gameStateRef.current;
     updateRoll(deltaTime);
+    updateEnemies(deltaTime);
+    updateProjectiles(deltaTime);
 
+    checkCollisions();
+    checkBoundaryCollisions();
+  };
+
+  /**
+   * Updates the roll state of the player.
+   * @param {number} deltaTime - The time elapsed since the last update.
+   */
+  const updateRoll = (deltaTime) => {
+    const { player } = gameStateRef.current;
+    if (player.isRolling) {
+      const rollStep = player.rollSpeed * deltaTime * 60;
+      player.rollDistance += rollStep;
+      player.x += player.rollDirection.x * rollStep;
+      player.y += player.rollDirection.y * rollStep;
+
+      player.shadows.push({ x: player.x, y: player.y, opacity: 1 });
+
+      if (player.rollDistance >= player.maxRollDistance) {
+        player.isRolling = false;
+        player.invincible = false;
+      }
+    }
+
+    player.shadows = player.shadows
+      .map((shadow) => ({
+        ...shadow,
+        opacity: shadow.opacity - 0.05
+      }))
+      .filter((shadow) => shadow.opacity > 0);
+  };
+
+  /**
+   * Updates the positions of all enemies.
+   * @param {number} deltaTime - The time elapsed since the last update.
+   */
+  const updateEnemies = (deltaTime) => {
+    const { player, enemies } = gameStateRef.current;
     gameStateRef.current.enemies = enemies.map((enemy) => {
       const dx = player.x - enemy.x;
       const dy = player.y - enemy.y;
@@ -134,7 +164,14 @@ const GameCanvas = () => {
         y: enemy.y + Math.sin(angle) * enemy.speed * deltaTime * 60
       };
     });
+  };
 
+  /**
+   * Updates the positions of all projectiles.
+   * @param {number} deltaTime - The time elapsed since the last update.
+   */
+  const updateProjectiles = (deltaTime) => {
+    const { projectiles } = gameStateRef.current;
     gameStateRef.current.projectiles = projectiles.map((projectile) => ({
       ...projectile,
       x:
@@ -144,11 +181,11 @@ const GameCanvas = () => {
         projectile.y +
         Math.sin(projectile.angle) * projectile.speed * deltaTime * 60
     }));
-
-    checkCollisions();
-    checkBoundaryCollisions();
   };
 
+  /**
+   * Checks for collisions between entities and handles them accordingly.
+   */
   const checkCollisions = () => {
     const { player, enemies, projectiles } = gameStateRef.current;
 
@@ -171,6 +208,10 @@ const GameCanvas = () => {
         if (gameStateRef.current.enemiesDefeated >= enemiesToNextUpgrade) {
           setShowUpgrade(true);
           setIsGamePaused(true);
+        }
+
+        if (gameStateRef.current.enemiesDefeated >= 30) {
+          setShouldPlaySpawnSound(false); // Stop playing the spawn sound after defeating 30 enemies
         }
 
         return false;
@@ -199,6 +240,9 @@ const GameCanvas = () => {
     }
   };
 
+  /**
+   * Ensures the player remains within the canvas boundaries.
+   */
   const checkBoundaryCollisions = () => {
     const { player } = gameStateRef.current;
     const canvas = canvasRef.current;
@@ -206,6 +250,9 @@ const GameCanvas = () => {
     player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
   };
 
+  /**
+   * Handles the event when the player is hit by an enemy.
+   */
   const handlePlayerHit = () => {
     const { player } = gameStateRef.current;
     player.life--;
@@ -220,36 +267,27 @@ const GameCanvas = () => {
     }
   };
 
+  /**
+   * Restarts the game by reinitializing the game state.
+   */
   const restartGame = useCallback(() => {
     gameStateRef.current = {
       ...gameStateRef.current,
-      player: {
-        x: window.innerWidth / 2,
-        y: window.innerHeight / 2,
-        width: 25.5,
-        height: 25.5,
-        life: 3,
-        stamina: 2,
-        speed: 2,
-        rollCooldown: 0,
-        invincible: false,
-        multishot: 1,
-        upgrades: 0
-      },
+      ...initializeGameState(),
       enemies: Array(10)
         .fill()
-        .map(() => spawnEnemy()),
-      projectiles: [],
-      score: 0,
-      enemySpawnTime: 300,
-      enemyMaxSpeed: 0.8
+        .map(() => spawnEnemy())
     };
     setScore(0);
     setIsGamePaused(false);
     frameRef.current = 0;
     lastUpdateTimeRef.current = Date.now();
+    setShouldPlaySpawnSound(true); // Reset the spawn sound state
   }, [spawnEnemy]);
 
+  /**
+   * Initiates a roll action for the player.
+   */
   const handleRoll = () => {
     const { player } = gameStateRef.current;
     const now = Date.now();
@@ -262,6 +300,7 @@ const GameCanvas = () => {
       player.isRolling = true;
       player.invincible = true;
       player.rollDistance = 0;
+      playRoll();
 
       const rollDirectionX =
         keysPressed.current["ArrowRight"] || keysPressed.current["KeyD"]
@@ -291,40 +330,28 @@ const GameCanvas = () => {
     }
   };
 
-  const updateRoll = (deltaTime) => {
-    const { player } = gameStateRef.current;
-    if (player.isRolling) {
-      const rollStep = player.rollSpeed * deltaTime * 60;
-      player.rollDistance += rollStep;
-      player.x += player.rollDirection.x * rollStep;
-      player.y += player.rollDirection.y * rollStep;
-
-      player.shadows.push({ x: player.x, y: player.y, opacity: 1 });
-
-      if (player.rollDistance >= player.maxRollDistance) {
-        player.isRolling = false;
-        player.invincible = false;
-      }
-    }
-
-    player.shadows = player.shadows
-      .map((shadow) => ({
-        ...shadow,
-        opacity: shadow.opacity - 0.05
-      }))
-      .filter((shadow) => shadow.opacity > 0);
-  };
-
+  /**
+   * Handles keydown events to update key states and initiate roll action.
+   * @param {KeyboardEvent} event - The keyboard event.
+   */
   const handleKeyDown = useCallback((event) => {
     keysPressed.current[event.code] = true;
     if (event.code === "Space") handleRoll();
   }, []);
 
+  /**
+   * Handles keyup events to update key states.
+   * @param {KeyboardEvent} event - The keyboard event.
+   */
   const handleKeyUp = useCallback((event) => {
     keysPressed.current[event.code] = false;
   }, []);
 
+  /**
+   * Handles shooting action by creating projectiles.
+   */
   const handleShoot = useCallback(() => {
+    playShoot();
     const { player } = gameStateRef.current;
     const scale = window.devicePixelRatio;
     const x = mousePosition.x * scale;
@@ -345,9 +372,13 @@ const GameCanvas = () => {
         height: 5
       });
     }
-  }, [mousePosition]);
+  }, [mousePosition, playShoot]);
 
   useEffect(() => {
+    /**
+     * Updates the mouse position state on mouse move.
+     * @param {MouseEvent} e - The mouse event.
+     */
     const handleMouseMove = (e) => {
       const canvas = canvasRef.current;
       const rect = canvas.getBoundingClientRect();
@@ -366,6 +397,10 @@ const GameCanvas = () => {
     };
   }, []);
 
+  /**
+   * Handles upgrade selection and applies the upgrade to the player.
+   * @param {string} upgradeType - The type of upgrade selected.
+   */
   const handleUpgrade = useCallback(
     (upgradeType) => {
       const { player } = gameStateRef.current;
@@ -387,6 +422,9 @@ const GameCanvas = () => {
     [enemiesToNextUpgrade]
   );
 
+  /**
+   * Handles player movement based on the pressed keys.
+   */
   const handlePlayerMovement = () => {
     const { player } = gameStateRef.current;
     const speed = player.speed;
@@ -411,6 +449,9 @@ const GameCanvas = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
 
+    /**
+     * Resizes the canvas to fit the parent element.
+     */
     const resizeCanvas = () => {
       const scale = window.devicePixelRatio;
       canvas.width = Math.floor(canvas.parentElement.clientWidth * scale);
@@ -447,6 +488,9 @@ const GameCanvas = () => {
   useEffect(() => {
     let animationFrameId;
 
+    /**
+     * The main game loop that updates and renders the game.
+     */
     const gameLoop = () => {
       if (!isGamePaused && gameStateRef.current) {
         const canvas = canvasRef.current;
@@ -459,7 +503,7 @@ const GameCanvas = () => {
           context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before drawing
 
           player.shadows.forEach((shadow) => {
-            context.fillStyle = `rgba(52, 152, 219, ${shadow.opacity})`;
+            context.fillStyle = `rgba(14, 165, 233, ${shadow.opacity})`;
             drawRoundedRect(
               context,
               shadow.x,
@@ -470,7 +514,7 @@ const GameCanvas = () => {
             );
           });
 
-          context.fillStyle = "#3498DB";
+          context.fillStyle = "#0EA5E9";
           drawRoundedRect(
             context,
             player.x,
@@ -481,7 +525,7 @@ const GameCanvas = () => {
           );
 
           drawEntities(context, enemies, "#EF4444", 6);
-          drawEntities(context, projectiles, "#3498DB", 2);
+          drawEntities(context, projectiles, "#0EA5E9", 2);
 
           updateGameState();
           handlePlayerMovement();

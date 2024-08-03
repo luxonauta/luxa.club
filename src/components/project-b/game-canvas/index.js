@@ -18,14 +18,9 @@ const initialGameState = [
   { pos: [8, 8], type: "final", solution: 14 }
 ];
 
-const TRUE_SOUND_URL = "/sounds/TRUE.MP3";
-const FALSE_SOUND_URL = "/sounds/FALSE.MP3";
+const TRUE_SOUND_URL = "/sounds/true.mp3";
+const FALSE_SOUND_URL = "/sounds/false.mp3";
 
-/**
- * GameCanvas component
- * @component
- * @returns {JSX.Element}
- */
 const GameCanvas = () => {
   const [gameState, setGameState] = useState(initialGameState);
   const [currentStep, setCurrentStep] = useState(1);
