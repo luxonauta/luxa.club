@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import useSound from "use-sound";
 import { drawRoundedRect } from "@/utils/draw-rounded-rect";
+import Cookies from "js-cookie";
+import { upsertScore } from "@/utils/supabase/actions";
 
 /**
  * Initializes the game state.
@@ -30,7 +32,7 @@ const initializeGameState = () => {
     enemies: [],
     projectiles: [],
     score: 0,
-    highScore: localStorage.getItem("highScore") || 0,
+    highScore: Cookies.get("c-best-score") || 0,
     enemySpawnTime: 300,
     enemyMaxSpeed: 0.8,
     enemiesDefeated: 0
@@ -264,6 +266,19 @@ const GameCanvas = () => {
     }, 2000);
     if (player.life <= 0) {
       setIsGamePaused(true);
+
+      try {
+        upsertScore(score);
+      } catch (error) {
+        toast("💁🏻 Hey, sign in to be on the Leaderboard!");
+      }
+
+      if (gameStateRef.current.score > gameStateRef.current.highScore) {
+        gameStateRef.current.highScore = gameStateRef.current.score;
+        Cookies.set("c-best-score", gameStateRef.current.score.toFixed(2), {
+          expires: 365
+        });
+      }
     }
   };
 
@@ -609,13 +624,36 @@ const GameCanvas = () => {
           </div>
         )}
       </div>
-      <div>
-        <p>Score: {score}</p>
-        <p>Life: {gameStateRef.current.player.life}</p>
-        <p>Stamina: {gameStateRef.current.player.stamina}</p>
-        <p>Speed: {gameStateRef.current.player.speed.toFixed(1)}</p>
-        <p>Enemies Defeated: {gameStateRef.current.enemiesDefeated}</p>
+      <div className="table" tabIndex={0}>
+        <table>
+          <thead>
+            <tr>
+              <th>Score</th>
+              <th>Life</th>
+              <th>Stamina</th>
+              <th>Speed</th>
+              <th>Enemies defeated</th>
+              <th>Best score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{score}</td>
+              <td>{gameStateRef.current.player.life}</td>
+              <td>{gameStateRef.current.player.stamina}</td>
+              <td>{gameStateRef.current.player.speed.toFixed(1)}</td>
+              <td>{gameStateRef.current.enemiesDefeated}</td>
+              <td>{gameStateRef.current.highScore}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
+      <p>
+        Control using the arrow keys or WASD. Click to shoot at enemies. Survive
+        and defeat as many enemies as possible. Collect upgrades to improve your
+        abilities. Roll using the spacebar to dodge enemies and become
+        temporarily invincible. The game ends when you lose all your lives.
+      </p>
     </>
   );
 };

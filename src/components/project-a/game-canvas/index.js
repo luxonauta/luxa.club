@@ -116,12 +116,12 @@ const GameCanvas = () => {
   }, [isCountdownActive, playBeep]);
 
   useEffect(() => {
-    const storedBestScore = Cookies.get("bestScore");
+    const storedBestScore = Cookies.get("a-best-score");
 
     if (storedBestScore) {
       setBestScore(parseFloat(storedBestScore));
     } else {
-      Cookies.set("bestScore", "0", { expires: 365 });
+      Cookies.set("a-best-score", "0", { expires: 365 });
     }
   }, []);
 
@@ -253,7 +253,7 @@ const GameCanvas = () => {
 
     if (score > bestScore) {
       setBestScore(score);
-      Cookies.set("bestScore", score.toFixed(2), { expires: 365 });
+      Cookies.set("a-best-score", score.toFixed(2), { expires: 365 });
     }
 
     setCoinsCollected(0);
@@ -417,18 +417,30 @@ const GameCanvas = () => {
           </div>
         )}
       </div>
+      <div className="table">
+        <table>
+          <thead>
+            <tr>
+              <th>Distance</th>
+              <th>Coins collected</th>
+              <th>Best score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{distance.toFixed(2)} km</td>
+              <td>{coinsCollected}</td>
+              <td>{bestScore}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p>
         Press the spacebar or tap the screen to jump and avoid obstacles.
         Collect coins to increase your score and slow down the increasing speed.
         The game will end if you hit an obstacle or enemy or fall off the
         screen.
       </p>
-      <div>
-        <p>Distance: {distance.toFixed(2)} km</p>
-        <p>Coins Collected: {coinsCollected}</p>
-        <br />
-        <p>Best Score: {bestScore} points</p>
-      </div>
     </>
   );
 };
