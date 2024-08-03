@@ -51,23 +51,30 @@ const drawEntities = (context, entities, color, cornerRadius = 0) => {
 };
 
 /**
- * Main game component.
+ * Main game component rendering the game canvas and UI.
  * @returns {JSX.Element} The rendered game canvas and UI.
  */
 const GameCanvas = () => {
   const canvasRef = useRef(null);
   const gameStateRef = useRef({
     player: {
-      x: 0, // Will be set properly in resizeCanvas
-      y: 0, // Will be set properly in resizeCanvas
-      width: 20.5,
-      height: 20.5,
+      x: 0,
+      y: 0,
+      width: 25.5,
+      height: 25.5,
       life: 3,
       stamina: 1,
-      dexterity: 1,
       speed: 1,
-      rollCooldown: 0,
-      invincible: false
+      rollCooldown: 1,
+      invincible: false,
+      isRolling: false,
+      rollDirection: { x: 0, y: 0 },
+      rollDistance: 0,
+      rollSpeed: 10,
+      maxRollDistance: Math.sqrt(25.5 ** 2 * 2) * 2,
+      multishot: 1,
+      upgrades: 0,
+      shadows: []
     },
     enemies: [],
     projectiles: [],
@@ -83,19 +90,15 @@ const GameCanvas = () => {
   const frameRef = useRef(0);
   const keysPressed = useRef({});
   const lastUpdateTimeRef = useRef(Date.now());
-  const lastRollTimeRef = useRef({});
+  const lastRollTimeRef = useRef(Date.now());
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [enemiesToNextUpgrade, setEnemiesToNextUpgrade] = useState(10);
 
-  /**
-   * Spawns a new enemy at a random position outside the viewport.
-   * @returns {Object} The newly spawned enemy.
-   */
-  const spawnEnemy = () => {
+  const spawnEnemy = useCallback(() => {
     const canvas = canvasRef.current;
     const scale = window.devicePixelRatio;
     const canvasWidth = canvas.width / scale;
     const canvasHeight = canvas.height / scale;
-
     const side = Math.floor(Math.random() * 4);
     const positionOptions = [
       { x: Math.random() * canvasWidth, y: -20.5 },
@@ -103,9 +106,7 @@ const GameCanvas = () => {
       { x: -20.5, y: Math.random() * canvasHeight },
       { x: canvasWidth + 20.5, y: Math.random() * canvasHeight }
     ];
-
     const { x, y } = positionOptions[side];
-
     return {
       x,
       y,
@@ -113,19 +114,16 @@ const GameCanvas = () => {
       width: 20.5,
       height: 20.5
     };
-  };
+  }, []);
 
-  /**
-   * Updates the game state.
-   */
   const updateGameState = () => {
     const now = Date.now();
     const deltaTime = Math.min((now - lastUpdateTimeRef.current) / 1000, 0.1);
     lastUpdateTimeRef.current = now;
 
     const { player, enemies, projectiles } = gameStateRef.current;
+    updateRoll(deltaTime);
 
-    // Update enemies
     gameStateRef.current.enemies = enemies.map((enemy) => {
       const dx = player.x - enemy.x;
       const dy = player.y - enemy.y;
@@ -137,7 +135,6 @@ const GameCanvas = () => {
       };
     });
 
-    // Update projectiles
     gameStateRef.current.projectiles = projectiles.map((projectile) => ({
       ...projectile,
       x:
@@ -152,13 +149,9 @@ const GameCanvas = () => {
     checkBoundaryCollisions();
   };
 
-  /**
-   * Checks for collisions between entities.
-   */
   const checkCollisions = () => {
     const { player, enemies, projectiles } = gameStateRef.current;
 
-    // Check projectile-enemy collisions
     gameStateRef.current.projectiles = projectiles.filter((projectile) => {
       const hitEnemy = enemies.find((enemy) => {
         const distance = Math.hypot(
@@ -173,23 +166,18 @@ const GameCanvas = () => {
           (enemy) => enemy !== hitEnemy
         );
         gameStateRef.current.enemiesDefeated++;
-        gameStateRef.current.score += player.dexterity;
         setScore(gameStateRef.current.score);
 
-        if (
-          gameStateRef.current.enemiesDefeated % 10 === 0 &&
-          gameStateRef.current.enemiesDefeated > 0
-        ) {
+        if (gameStateRef.current.enemiesDefeated >= enemiesToNextUpgrade) {
           setShowUpgrade(true);
           setIsGamePaused(true);
         }
 
-        return false; // Remove the projectile
+        return false;
       }
-      return true; // Keep the projectile
+      return true;
     });
 
-    // Check player-enemy collisions
     if (!player.invincible) {
       const hitEnemy = enemies.find((enemy) => {
         const distance = Math.hypot(
@@ -211,9 +199,6 @@ const GameCanvas = () => {
     }
   };
 
-  /**
-   * Checks for collisions between the player and canvas boundaries.
-   */
   const checkBoundaryCollisions = () => {
     const { player } = gameStateRef.current;
     const canvas = canvasRef.current;
@@ -221,9 +206,6 @@ const GameCanvas = () => {
     player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
   };
 
-  /**
-   * Handles player getting hit.
-   */
   const handlePlayerHit = () => {
     const { player } = gameStateRef.current;
     player.life--;
@@ -238,9 +220,6 @@ const GameCanvas = () => {
     }
   };
 
-  /**
-   * Restarts the game.
-   */
   const restartGame = useCallback(() => {
     gameStateRef.current = {
       ...gameStateRef.current,
@@ -251,10 +230,11 @@ const GameCanvas = () => {
         height: 25.5,
         life: 3,
         stamina: 2,
-        dexterity: 1,
         speed: 2,
         rollCooldown: 0,
-        invincible: false
+        invincible: false,
+        multishot: 1,
+        upgrades: 0
       },
       enemies: Array(10)
         .fill()
@@ -274,54 +254,97 @@ const GameCanvas = () => {
     const { player } = gameStateRef.current;
     const now = Date.now();
 
-    if (now - lastRollTimeRef.current > player.rollCooldown * 1000) {
+    if (
+      now - lastRollTimeRef.current > player.rollCooldown * 1000 &&
+      !player.isRolling
+    ) {
       lastRollTimeRef.current = now;
+      player.isRolling = true;
       player.invincible = true;
-      setTimeout(() => {
-        if (gameStateRef.current) {
-          gameStateRef.current.player.invincible = false;
-        }
-      }, 500); // Adjust the duration of invincibility during the roll
+      player.rollDistance = 0;
+
+      const rollDirectionX =
+        keysPressed.current["ArrowRight"] || keysPressed.current["KeyD"]
+          ? 1
+          : keysPressed.current["ArrowLeft"] || keysPressed.current["KeyA"]
+          ? -1
+          : 0;
+      const rollDirectionY =
+        keysPressed.current["ArrowDown"] || keysPressed.current["KeyS"]
+          ? 1
+          : keysPressed.current["ArrowUp"] || keysPressed.current["KeyW"]
+          ? -1
+          : 0;
+
+      player.rollDirection = {
+        x: rollDirectionX,
+        y: rollDirectionY
+      };
+
+      if (rollDirectionX !== 0 && rollDirectionY !== 0) {
+        const magnitude = Math.sqrt(
+          rollDirectionX * rollDirectionX + rollDirectionY * rollDirectionY
+        );
+        player.rollDirection.x /= magnitude;
+        player.rollDirection.y /= magnitude;
+      }
     }
   };
 
-  /**
-   * Handles key down events.
-   * @param {KeyboardEvent} event - The keyboard event.
-   */
+  const updateRoll = (deltaTime) => {
+    const { player } = gameStateRef.current;
+    if (player.isRolling) {
+      const rollStep = player.rollSpeed * deltaTime * 60;
+      player.rollDistance += rollStep;
+      player.x += player.rollDirection.x * rollStep;
+      player.y += player.rollDirection.y * rollStep;
+
+      player.shadows.push({ x: player.x, y: player.y, opacity: 1 });
+
+      if (player.rollDistance >= player.maxRollDistance) {
+        player.isRolling = false;
+        player.invincible = false;
+      }
+    }
+
+    player.shadows = player.shadows
+      .map((shadow) => ({
+        ...shadow,
+        opacity: shadow.opacity - 0.05
+      }))
+      .filter((shadow) => shadow.opacity > 0);
+  };
+
   const handleKeyDown = useCallback((event) => {
     keysPressed.current[event.code] = true;
     if (event.code === "Space") handleRoll();
   }, []);
 
-  /**
-   * Handles key up events.
-   * @param {KeyboardEvent} event - The keyboard event.
-   */
   const handleKeyUp = useCallback((event) => {
     keysPressed.current[event.code] = false;
   }, []);
 
-  /**
-   * Handles shooting projectiles.
-   */
   const handleShoot = useCallback(() => {
     const { player } = gameStateRef.current;
     const scale = window.devicePixelRatio;
     const x = mousePosition.x * scale;
     const y = mousePosition.y * scale;
-    const angle = Math.atan2(
+    const baseAngle = Math.atan2(
       y - (player.y + player.height / 2) * scale,
       x - (player.x + player.width / 2) * scale
     );
-    gameStateRef.current.projectiles.push({
-      x: player.x + player.width / 2,
-      y: player.y + player.height / 2,
-      angle,
-      speed: 10,
-      width: 5,
-      height: 5
-    });
+
+    for (let i = 0; i < player.multishot; i++) {
+      const angle = baseAngle + (i - Math.floor(player.multishot / 2)) * 0.1;
+      gameStateRef.current.projectiles.push({
+        x: player.x + player.width / 2,
+        y: player.y + player.height / 2,
+        angle,
+        speed: 10,
+        width: 5,
+        height: 5
+      });
+    }
   }, [mousePosition]);
 
   useEffect(() => {
@@ -343,28 +366,27 @@ const GameCanvas = () => {
     };
   }, []);
 
-  /**
-   * Handles player upgrades.
-   * @param {string} upgradeType - The type of upgrade.
-   */
-  const handleUpgrade = useCallback((upgradeType) => {
-    const { player } = gameStateRef.current;
-    const upgradeActions = {
-      life: () => player.life++,
-      stamina: () => player.stamina++,
-      dexterity: () => player.dexterity++,
-      speed: () => {
-        player.speed += 0.5;
-      }
-    };
-    upgradeActions[upgradeType]();
-    setShowUpgrade(false);
-    setIsGamePaused(false);
-  }, []);
+  const handleUpgrade = useCallback(
+    (upgradeType) => {
+      const { player } = gameStateRef.current;
+      const upgradeActions = {
+        life: () => player.life++,
+        stamina: () => player.stamina++,
+        speed: () => (player.speed += 0.5),
+        multishot: () => (player.multishot += 1)
+      };
 
-  /**
-   * Handles player movement.
-   */
+      if (upgradeActions[upgradeType]) {
+        upgradeActions[upgradeType]();
+        player.upgrades++;
+        setEnemiesToNextUpgrade(enemiesToNextUpgrade * 2);
+        setShowUpgrade(false);
+        setIsGamePaused(false);
+      }
+    },
+    [enemiesToNextUpgrade]
+  );
+
   const handlePlayerMovement = () => {
     const { player } = gameStateRef.current;
     const speed = player.speed;
@@ -436,6 +458,18 @@ const GameCanvas = () => {
 
           context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas before drawing
 
+          player.shadows.forEach((shadow) => {
+            context.fillStyle = `rgba(52, 152, 219, ${shadow.opacity})`;
+            drawRoundedRect(
+              context,
+              shadow.x,
+              shadow.y,
+              player.width,
+              player.height,
+              6
+            );
+          });
+
           context.fillStyle = "#3498DB";
           drawRoundedRect(
             context,
@@ -498,18 +532,20 @@ const GameCanvas = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => handleUpgrade("dexterity")}
-                    className="action"
-                  >
-                    Dexterity
-                  </button>
-                  <button
-                    type="button"
                     onClick={() => handleUpgrade("speed")}
                     className="action"
                   >
                     Speed
                   </button>
+                  {gameStateRef.current.player.upgrades >= 2 && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpgrade("multishot")}
+                      className="action"
+                    >
+                      Multishot
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -533,7 +569,6 @@ const GameCanvas = () => {
         <p>Score: {score}</p>
         <p>Life: {gameStateRef.current.player.life}</p>
         <p>Stamina: {gameStateRef.current.player.stamina}</p>
-        <p>Dexterity: {gameStateRef.current.player.dexterity}</p>
         <p>Speed: {gameStateRef.current.player.speed.toFixed(1)}</p>
         <p>Enemies Defeated: {gameStateRef.current.enemiesDefeated}</p>
       </div>
