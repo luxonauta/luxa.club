@@ -3,34 +3,7 @@ import toast from "react-hot-toast";
 import useSound from "use-sound";
 import Cookies from "js-cookie";
 import { upsertScore } from "@/utils/supabase/actions";
-
-/**
- * Draws a rounded rectangle on the canvas.
- * @param {CanvasRenderingContext2D} context - The canvas rendering context.
- * @param {number} x - The x coordinate of the rectangle.
- * @param {number} y - The y coordinate of the rectangle.
- * @param {number} width - The width of the rectangle.
- * @param {number} height - The height of the rectangle.
- * @param {number} radius - The radius of the corners.
- */
-const drawRoundedRect = (context, x, y, width, height, radius) => {
-  context.beginPath();
-  context.moveTo(x + radius, y);
-  context.lineTo(x + width - radius, y);
-  context.quadraticCurveTo(x + width, y, x + width, y + radius);
-  context.lineTo(x + width, y + height - radius);
-  context.quadraticCurveTo(
-    x + width,
-    y + height,
-    x + width - radius,
-    y + height
-  );
-  context.lineTo(x + radius, y + height);
-  context.quadraticCurveTo(x, y + height, x, y + height - radius);
-  context.lineTo(x, y + radius);
-  context.quadraticCurveTo(x, y, x + radius, y);
-  context.closePath();
-};
+import { drawRoundedRect } from "@/utils/draw-rounded-rect";
 
 /**
  * Draws entities on the canvas.
@@ -143,12 +116,12 @@ const GameCanvas = () => {
   }, [isCountdownActive, playBeep]);
 
   useEffect(() => {
-    const storedBestScore = Cookies.get("bestScore");
+    const storedBestScore = Cookies.get("a-best-score");
 
     if (storedBestScore) {
       setBestScore(parseFloat(storedBestScore));
     } else {
-      Cookies.set("bestScore", "0", { expires: 365 });
+      Cookies.set("a-best-score", "0", { expires: 365 });
     }
   }, []);
 
@@ -280,7 +253,7 @@ const GameCanvas = () => {
 
     if (score > bestScore) {
       setBestScore(score);
-      Cookies.set("bestScore", score.toFixed(2), { expires: 365 });
+      Cookies.set("a-best-score", score.toFixed(2), { expires: 365 });
     }
 
     setCoinsCollected(0);
@@ -349,7 +322,7 @@ const GameCanvas = () => {
    * @param {CanvasRenderingContext2D} context - The canvas rendering context.
    */
   const drawPlayer = (context) => {
-    context.fillStyle = "#334155";
+    context.fillStyle = "#0EA5E9";
     drawRoundedRect(
       context,
       player.x,
@@ -428,7 +401,7 @@ const GameCanvas = () => {
       <div className="game-container">
         <canvas ref={canvasRef} />
         {isGameOver && (
-          <div className="game-over row flow-column-wrap">
+          <div className="overlay row flow-column-wrap">
             <button
               type="button"
               onClick={restartGame}
@@ -444,18 +417,30 @@ const GameCanvas = () => {
           </div>
         )}
       </div>
+      <div className="table">
+        <table>
+          <thead>
+            <tr>
+              <th>Distance</th>
+              <th>Coins collected</th>
+              <th>Best score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>{distance.toFixed(2)} km</td>
+              <td>{coinsCollected}</td>
+              <td>{bestScore}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p>
         Press the spacebar or tap the screen to jump and avoid obstacles.
         Collect coins to increase your score and slow down the increasing speed.
         The game will end if you hit an obstacle or enemy or fall off the
         screen.
       </p>
-      <div>
-        <p>Distance: {distance.toFixed(2)} km</p>
-        <p>Coins Collected: {coinsCollected}</p>
-        <br />
-        <p>Best Score: {bestScore} points</p>
-      </div>
     </>
   );
 };
