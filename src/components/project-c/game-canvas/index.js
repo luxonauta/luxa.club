@@ -420,10 +420,10 @@ const GameCanvas = () => {
     (upgradeType) => {
       const { player } = gameStateRef.current;
       const upgradeActions = {
-        life: () => player.life++,
-        stamina: () => player.stamina++,
-        speed: () => (player.speed += 0.5),
-        multishot: () => (player.multishot += 1)
+        life: () => { player.life++; },
+        stamina: () => { player.stamina++; },
+        speed: () => { player.speed += 0.5; },
+        multishot: () => { player.multishot += 1; }
       };
 
       if (upgradeActions[upgradeType]) {
