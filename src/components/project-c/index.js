@@ -14,7 +14,7 @@ const ProjectC = () => {
     >
       <div>
         <h2>Project C</h2>
-        <p>WIP.</p>
+        <p>Survive as long as you can in a game with rogue-lite elements.</p>
       </div>
       {showGame ? (
         <GameCanvas />
