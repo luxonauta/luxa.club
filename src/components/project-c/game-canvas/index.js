@@ -91,10 +91,10 @@ const GameCanvas = () => {
     const canvasHeight = canvas.height / scale;
     const side = Math.floor(Math.random() * 4);
     const positionOptions = [
-      { x: Math.random() * canvasWidth, y: -20.5 },
-      { x: Math.random() * canvasWidth, y: canvasHeight + 20.5 },
-      { x: -20.5, y: Math.random() * canvasHeight },
-      { x: canvasWidth + 20.5, y: Math.random() * canvasHeight }
+      { x: Math.random() * canvasWidth, y: -20.5 }, // Top edge
+      { x: Math.random() * canvasWidth, y: canvasHeight + 20.5 }, // Bottom edge
+      { x: -20.5, y: Math.random() * canvasHeight }, // Left edge
+      { x: canvasWidth + 20.5, y: Math.random() * canvasHeight } // Right edge
     ];
     const { x, y } = positionOptions[side];
     return {
